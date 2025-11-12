@@ -421,12 +421,73 @@
   </section>
 
 <!-- ===== 5. TRENDING COINS / LIVE CHART ===== -->
-<section class="px-4 mt-3">
-<h2 class="text-lg font-semibold mb-3">Live Price Performance (BTC/USDT)</h2>
-    <div class="bg-card rounded-xl overflow-hidden p-0" style="height: 300px;">
-<div id="tvchart" class="w-full h-full"></div>
-                
-  </section>
+<section id="liveChartSection" class="px-4 mt-6">
+  <div class="flex flex-col">
+    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
+      Live Price Performance (BTC/USDT)
+    </h2>
+
+    <!-- Chart Container -->
+    <div
+      id="chartContainer"
+      class="bg-white dark:bg-gray-900 shadow-md rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700"
+      style="width: 100%; height: 480px; position: relative;"
+    >
+      <div id="tvchart" style="width: 100%; height: 100%;"></div>
+    </div>
+  </div>
+
+  <!-- ===== TradingView Widget Script ===== -->
+  <script type="text/javascript">
+    document.addEventListener("DOMContentLoaded", function () {
+      const containerId = "tvchart";
+      const scriptId = "tradingview-widget-script";
+
+      // Prevent multiple initializations
+      if (!window.tradingViewLoaded) {
+        const script = document.createElement("script");
+        script.id = scriptId;
+        script.src = "https://s3.tradingview.com/tv.js";
+        script.onload = () => {
+          window.tradingViewLoaded = true;
+          initTradingView();
+        };
+        document.body.appendChild(script);
+      } else {
+        initTradingView();
+      }
+
+      // Initialize the TradingView chart
+      function initTradingView() {
+        if (typeof TradingView === "undefined") return;
+
+        // Remove any previous chart instance to avoid overlapping
+        const existing = document.querySelector(`#${containerId} iframe`);
+        if (existing) existing.remove();
+
+        new TradingView.widget({
+          autosize: true,
+          symbol: "BINANCE:BTCUSDT",
+          interval: "15",
+          timezone: "Etc/UTC",
+          theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
+          style: "1",
+          locale: "en",
+          toolbar_bg: "#f1f3f6",
+          enable_publishing: false,
+          hide_top_toolbar: false,
+          hide_legend: false,
+          save_image: false,
+          container_id: containerId,
+        });
+      }
+
+      // Re-render chart when theme changes (if you toggle dark/light mode dynamically)
+      const observer = new MutationObserver(() => initTradingView());
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    });
+  </script>
+</section>
         
         
 
