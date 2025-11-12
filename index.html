@@ -208,71 +208,338 @@
 
     <!-- MAIN CONTENT PAGES -->
     <main id="mainContent">
+        
+<div id="landingPage" class="page" style="min-height:100vh; padding:4rem 1rem 3rem; box-sizing:border-box; position:relative; color:var(--bc-text,#e6f0f6);">
+  <style>
+    /* Blockchain-like dark theme variables */
+    #landingPage {
+      --bc-bg-0: #071428;       /* deep navy */
+      --bc-bg-1: linear-gradient(135deg,#0b2a44 0%, #001826 100%);
+      --bc-accent: #2dd4bf;     /* teal/green accent */
+      --bc-accent-2: #00b894;   /* secondary green */
+      --bc-glass: rgba(255,255,255,0.03);
+      --bc-card-border: rgba(255,255,255,0.04);
+      --bc-muted: rgba(230,240,246,0.55);
+      --bc-shadow: 0 6px 24px rgba(3,10,18,0.6);
+      background: var(--bc-bg-1);
+      background-blend-mode: overlay;
+      backdrop-filter: blur(6px);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+                   Roboto, "Helvetica Neue", Arial;
+    }
 
-        <!-- 1. LANDING PAGE (CoinStats Style) -->
-        <div id="landingPage" class="page p-4 pt-16">
-            <!-- Header (Standalone for landing) -->
-            <div class="fixed top-0 left-0 right-0 bg-binance-bg-primary p-4 flex justify-between items-center z-50">
-                <div class="flex items-center gap-2">
-                    <span class="text-3xl text-binance-accent-yellow">💱</span>
-                    <h1 class="text-2xl font-extrabold">Auto-Trading Bot</h1>
-                </div>
-                <div class="flex items-center space-x-3">
-                    <button onclick="showPage('loginIDPage')" class="text-binance-text-light text-sm font-semibold">Login ID</button>
-                    <div class="relative">
-                        <button id="landingMoreBtn" class="p-2 card rounded-full text-binance-text-light">
-                            <!-- SVG: Menu Dots -->
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" /></svg>
-                        </button>
-                        <div id="landingMoreMenu" class="hidden absolute right-0 mt-3 w-48 card shadow-lg z-50">
-                            <button onclick="connectWalletFlow(); closeLandingMoreMenu()" class="w-full text-left p-3 hover:bg-binance-bg-primary flex items-center gap-2 rounded-t-lg">Connect Portfolio</button>
-                            <button onclick="connectWalletFlow(); closeLandingMoreMenu()" class="w-full text-left p-3 hover:bg-binance-bg-primary flex items-center gap-2">Start Free Trail</button>
-                            <button onclick="showPage('loginIDPage'); closeLandingMoreMenu()" class="w-full text-left p-3 hover:bg-binance-bg-primary flex items-center gap-2">Login ID</button>
-                            <button onclick="showPage('supportPage'); closeLandingMoreMenu()" class="w-full text-left p-3 hover:bg-binance-bg-primary flex items-center gap-2">Support</button>
-                            <button onclick="connectWalletFlow(); closeLandingMoreMenu()" class="w-full text-left p-3 hover:bg-binance-bg-primary flex items-center gap-2 rounded-b-lg">Connect Wallet</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    /* Header */
+    #landingPage .lp-header {
+      position:fixed;
+      top:0; left:0; right:0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:1rem;
+      padding:1rem 1.25rem;
+      z-index:60;
+      background: linear-gradient(180deg, rgba(1,8,16,0.55), rgba(1,8,16,0.25));
+      border-bottom: 1px solid var(--bc-card-border);
+      backdrop-filter: blur(6px);
+    }
+    #landingPage .brand {
+      display:flex;
+      align-items:center;
+      gap:.75rem;
+    }
+    #landingPage .brand .logo {
+      width:44px;
+      height:44px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:10px;
+      background: linear-gradient(135deg, rgba(45,212,191,0.12), rgba(0,184,148,0.06));
+      box-shadow: 0 6px 18px rgba(3,10,18,0.6), inset 0 1px 0 rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.02);
+    }
+    #landingPage h1 {
+      font-size:1.125rem;
+      font-weight:800;
+      letter-spacing:-0.01em;
+      color:var(--bc-text);
+    }
 
-            <!-- Hero Section -->
-            <div class="text-center mt-4">
-                <h2 class="text-3xl md:text-5xl font-extrabold leading-tight">Blockchain Auto-Trading System Bot</h2>
-                <p class="text-binance-text-muted mt-4 max-w-lg mx-auto">Harness the power of AI for seamless, high-frequency blockchain trading. Connect your portfolio to start maximizing your returns automatically.</p>
-                <div class="flex justify-center gap-4 mt-6">
-                    <button onclick="connectWalletFlow()" class="accent-btn py-3 px-6 rounded-full shadow-xl hover:opacity-90 transition">Connect Portfolio</button>
-                    <button onclick="connectWalletFlow()" class="bg-binance-card text-binance-text-light py-3 px-6 rounded-full border border-gray-700 hover:bg-gray-800 transition">Start Free Trial</button>
-                </div>
-                <button id="getMobileAppBtn" class="mt-4 text-binance-accent-yellow hover:underline text-sm font-semibold">Get Mobile App</button>
-            </div>
+    /* Header actions */
+    #landingPage .lp-header .actions {
+      display:flex;
+      align-items:center;
+      gap:.5rem;
+    }
+    #landingPage .lp-header .actions button {
+      background:transparent;
+      color:var(--bc-muted);
+      border:0;
+      padding:.4rem .6rem;
+      border-radius:8px;
+      font-weight:600;
+      cursor:pointer;
+    }
+    #landingPage .lp-header .actions .circle-btn {
+      width:44px;
+      height:44px;
+      display:inline-grid;
+      place-items:center;
+      background:var(--bc-glass);
+      border-radius:999px;
+      border:1px solid var(--bc-card-border);
+    }
 
-            <!-- Market Overview -->
-            <div class="mt-12">
-                <h3 class="text-xl font-bold mb-4">Market Overview</h3>
-                <div id="marketOverviewStats" class="grid grid-cols-2 gap-4">
-                    <div class="card p-3 text-center">
-                        <p class="text-xs text-binance-text-muted">Total Market Cap</p>
-                        <p id="totalMarketCap" class="text-lg font-bold mt-1">...</p>
-                    </div>
-                    <div class="card p-3 text-center">
-                        <p class="text-xs text-binance-text-muted">24h Trading Volume</p>
-                        <p id="totalVolume" class="text-lg font-bold mt-1">...</p>
-                    </div>
-                </div>
-            </div>
+    /* More menu */
+    #landingPage .more-menu {
+      position:relative;
+    }
+    #landingPage .more-pop {
+      position:absolute;
+      right:0;
+      margin-top:.5rem;
+      min-width:220px;
+      background:linear-gradient(180deg, rgba(4,14,24,0.9), rgba(3,10,18,0.85));
+      border:1px solid var(--bc-card-border);
+      border-radius:12px;
+      box-shadow: var(--bc-shadow);
+      overflow:hidden;
+      z-index:70;
+    }
+    #landingPage .more-pop button {
+      width:100%;
+      text-align:left;
+      padding:.75rem .9rem;
+      background:transparent;
+      color:var(--bc-muted);
+      border:0;
+      font-weight:600;
+      display:flex;
+      gap:.6rem;
+      align-items:center;
+      cursor:pointer;
+    }
+    #landingPage .more-pop button:hover { background: rgba(255,255,255,0.02); color:var(--bc-text); }
 
-            <!-- Top Coins List -->
-            <div class="mt-8">
-                <h3 class="text-xl font-bold mb-4">Live Prices & Top Coins</h3>
-                <div class="card p-2">
-                    <div id="landingCoinList" class="space-y-1">
-                        <!-- Coin data will be rendered here -->
-                        <p class="text-center text-binance-text-muted p-4">Loading market data...</p>
-                    </div>
-                </div>
-            </div>
+    /* Hero */
+    #landingPage .hero {
+      text-align:center;
+      margin-top:5.25rem; /* header height + gap */
+      padding:2.25rem 1rem 1.25rem;
+      max-width:980px;
+      margin-left:auto;
+      margin-right:auto;
+    }
+    #landingPage .hero h2 {
+      font-size:2rem;
+      line-height:1.03;
+      font-weight:800;
+      color: #eaf7f5;
+      margin:0;
+    }
+    @media(min-width:768px){ #landingPage .hero h2 { font-size:3rem; } }
+    #landingPage .hero p {
+      color:var(--bc-muted);
+      margin-top:.75rem;
+      font-size:1rem;
+      max-width:760px;
+      margin-left:auto;
+      margin-right:auto;
+    }
+
+    /* CTA buttons */
+    .cta-row { display:flex; gap:.75rem; justify-content:center; margin-top:1.25rem; flex-wrap:wrap; }
+    .btn-accent {
+      background: linear-gradient(90deg,var(--bc-accent),var(--bc-accent-2));
+      color: #022023;
+      border:0;
+      padding:.85rem 1.25rem;
+      border-radius:999px;
+      font-weight:800;
+      box-shadow: 0 10px 30px rgba(2,20,24,0.45);
+      display:inline-flex;
+      gap:.6rem;
+      align-items:center;
+      cursor:pointer;
+    }
+    .btn-ghost {
+      background: transparent;
+      border:1px solid rgba(255,255,255,0.06);
+      color:var(--bc-text);
+      padding:.75rem 1.1rem;
+      border-radius:999px;
+      font-weight:700;
+      display:inline-flex;
+      align-items:center;
+      gap:.6rem;
+      cursor:pointer;
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.02); }
+
+    /* Market overview and cards */
+    .lp-section { max-width:1100px; margin:1.25rem auto; padding:0 1rem; }
+    .section-title { color:#d9eef0; font-weight:800; font-size:1.05rem; margin-bottom:.65rem; display:flex; align-items:center; gap:.5rem; }
+    .stats-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:1rem; }
+    .card {
+      background:linear-gradient(180deg, rgba(255,255,255,0.016), rgba(255,255,255,0.01));
+      border:1px solid var(--bc-card-border);
+      border-radius:12px;
+      padding:1rem;
+      box-shadow: var(--bc-shadow);
+    }
+    .card .muted { color:var(--bc-muted); font-size:.8rem; }
+    .card .value { font-weight:800; margin-top:.25rem; font-size:1.05rem; color:#eaf7f5; }
+
+    /* Top coins list */
+    .coins-list { margin-top:.5rem; display:flex; flex-direction:column; gap:.5rem; }
+    .coin-row {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:.6rem .75rem;
+      border-radius:10px;
+      transition:background .12s;
+      gap:.6rem;
+      border:1px solid rgba(255,255,255,0.02);
+    }
+    .coin-row:hover { background: rgba(255,255,255,0.018); }
+    .coin-left { display:flex; align-items:center; gap:.75rem; }
+    .coin-avatar {
+      width:36px; height:36px; border-radius:50%; display:inline-grid; place-items:center;
+      background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.02);
+    }
+    .coin-name { font-weight:700; color: #eaf7f5; }
+    .coin-symbol { color:var(--bc-muted); font-weight:700; font-size:.85rem; }
+
+    /* small helper */
+    .muted { color:var(--bc-muted); font-size:.9rem; }
+  </style>
+
+  <!-- Header -->
+  <div class="lp-header">
+    <div class="brand">
+      <div class="logo" aria-hidden="true">
+        <!-- Inline simplified blockchain-like mark (chain + shield) -->
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="g1" x1="0" x2="1"><stop offset="0" stop-color="#2dd4bf"/><stop offset="1" stop-color="#00b894"/></linearGradient></defs>
+          <path d="M12 2l6 3v5c0 5-3.5 9.5-6 11-2.5-1.5-6-6-6-11V5l6-3z" fill="url(#g1)"/>
+          <path d="M9 10h6" stroke="rgba(2,20,24,0.15)" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Auto-Trading Bot</h1>
+        <div class="muted" style="font-size:.8rem; margin-top:2px;">Blockchain-powered automated strategies</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button onclick="showPage('teamPage')" title="Team" class="muted" style="font-weight:700;">Team</button>
+
+      <button onclick="showPage('loginIDPage')" class="muted" title="Login ID">Login ID</button>
+
+      <div class="more-menu" style="position:relative;">
+        <button id="landingMoreBtn" class="circle-btn" aria-haspopup="true" aria-expanded="false" title="More">
+          <!-- Dots menu -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="color:var(--bc-muted)">
+            <circle cx="12" cy="5" r="1.6"></circle>
+            <circle cx="12" cy="12" r="1.6"></circle>
+            <circle cx="12" cy="19" r="1.6"></circle>
+          </svg>
+        </button>
+
+        <!-- More menu (keeps original items and onclicks) -->
+        <div id="landingMoreMenu" class="more-pop" style="display:none;">
+          <button onclick="connectWalletFlow(); closeLandingMoreMenu()" title="Connect Portfolio">
+            <!-- wallet svg -->
+            <svg width="16" height="16" viewBox="0 0 24 24" style="opacity:.9"><path d="M2 7v10a2 2 0 0 0 2 2h16" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Connect Portfolio
+          </button>
+          <button onclick="connectWalletFlow(); closeLandingMoreMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" style="opacity:.9"><path d="M12 2v20" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+            Start Free Trial
+          </button>
+          <button onclick="showPage('loginIDPage'); closeLandingMoreMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" style="opacity:.9"><path d="M10 14l2-2 2 2M12 6v6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Login ID
+          </button>
+          <button onclick="showPage('supportPage'); closeLandingMoreMenu()">
+            <svg width="16" height="16" viewBox="0 0 24 24" style="opacity:.9"><path d="M12 2a9 9 0 0 0-9 9 9 9 0 0 0 1 4" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+            Support
+          </button>
+          <button onclick="connectWalletFlow(); closeLandingMoreMenu()" style="border-top:1px solid rgba(255,255,255,0.02);">
+            <svg width="16" height="16" viewBox="0 0 24 24" style="opacity:.9"><path d="M21 12v6a2 2 0 0 1-2 2H5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+            Connect Wallet
+          </button>
         </div>
+      </div>
+    </div>
+  </div>
 
+  <!-- Hero -->
+  <section class="hero" role="region" aria-labelledby="heroTitle">
+    <h2 id="heroTitle">Blockchain Auto-Trading System Bot</h2>
+    <p class="muted">Harness the power of AI for seamless, high-frequency blockchain trading. Connect your portfolio to start maximizing your returns automatically — secure, non-custodial, and transparent.</p>
+
+    <div class="cta-row" role="group" aria-label="Primary actions">
+      <button onclick="connectWalletFlow()" class="btn-accent" title="Connect Portfolio">
+        <!-- Wallet SVG -->
+        <svg width="18" height="18" viewBox="0 0 24 24" style="filter:drop-shadow(0 2px 6px rgba(2,20,24,0.15));">
+          <path d="M2 7h20v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7z" fill="#022023" opacity="0.05"></path>
+          <path d="M21 9H3" stroke="#022023" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" fill="none"></path>
+          <circle cx="18" cy="13" r="1.6" fill="#022023"></circle>
+        </svg>
+        Connect Portfolio
+      </button>
+
+      <button onclick="connectWalletFlow()" class="btn-ghost" title="Start Free Trial">
+        <!-- Trial SVG -->
+        <svg width="16" height="16" viewBox="0 0 24 24" style="opacity:.9">
+          <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" stroke="currentColor" stroke-width="0.6" fill="none" stroke-linejoin="round"/>
+        </svg>
+        Start Free Trial
+      </button>
+    </div>
+
+    <button id="getMobileAppBtn" class="muted" style="margin-top:1rem; font-weight:700; background:transparent; border:0;" onclick="/* existing handler assumed elsewhere */">
+      <!-- mobile icon -->
+      <svg width="14" height="14" viewBox="0 0 24 24" style="vertical-align:middle; margin-right:.45rem;"><rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>
+      Get Mobile App
+    </button>
+  </section>
+
+  <!-- Market Overview -->
+  <section class="lp-section" aria-labelledby="marketOverviewTitle">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 id="marketOverviewTitle" class="section-title">Market Overview</h3>
+      <div class="muted" style="font-size:.95rem">Live • Sourced from marketdata</div>
+    </div>
+
+    <div class="stats-grid" style="margin-top:.6rem;">
+      <div class="card" aria-hidden="false">
+        <div class="muted">Total Market Cap</div>
+        <div id="totalMarketCap" class="value">...</div>
+      </div>
+      <div class="card">
+        <div class="muted">24h Trading Volume</div>
+        <div id="totalVolume" class="value">...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Top Coins List -->
+  <section class="lp-section" aria-labelledby="topCoinsTitle" style="margin-top:.6rem;">
+    <h3 id="topCoinsTitle" class="section-title">Live Prices & Top Coins</h3>
+
+    <div class="card" style="padding:.6rem;">
+      <div id="landingCoinList" class="coins-list">
+        <!-- Keep the same ID; your existing marketdata renderer will populate this -->
+        <div class="muted" style="padding:1.25rem; text-align:center;">Loading market data...</div>
+      </div>
+    </div>
+  </section>
+
+    
         <!-- 2. WALLET CONNECTOR PAGE -->
         <div id="walletConnectPage" class="page p-6 flex flex-col items-center justify-center pt-16">
             <div class="card p-6 w-full max-w-md space-y-6">
