@@ -325,194 +325,213 @@
             </div>
         </div>
 
+
         
-<!-- ======================================================= -->
-<!-- 4. HOME PAGE (Binance Mobile App Style) -->
-<!-- ======================================================= -->
-<div id="home" class="page bg-black text-white min-h-screen font-sans pb-24 overflow-y-auto">
+        <!-- ======================================================= --> 
+        <!-- 4. HOME PAGE (Binance Mobile App Style - Optimized Layout) --> 
+        <!-- ======================================================= -->
+        <div id="home" class="page bg-black text-white min-h-screen font-sans pb-24 overflow-y-auto">    
+            <!-- ===== 1. PORTFOLIO HEADER ===== -->   
+        <section class="px-4 pt-5 pb-3 border-b border-gray-800 bg-gradient-to-b from-[#0b0b0b] to-[#111]">  
+    <div class="flex justify-between items-center">  
+      <div class="text-xs text-gray-500">Account ID:   
+        <span id="homeAccountID" class="text-yellow-400 font-semibold">...</span>  
+      </div>  <button id="toggleBalanceVisibility" class="text-gray-400 hover:text-yellow-400 transition">  
+    <!-- Eye Icon -->  
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"  
+        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />  
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"  
+        d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />  
+    </svg>  
+  </button>  
+</div>  
 
-  <!-- ===== 1. PORTFOLIO HEADER (Top Summary Section) ===== -->
-  <section class="px-4 pt-4 pb-2">
-    <div class="flex justify-between items-center">
-     <div class="text-xs text-gray-500 mt-1">Account ID: <span id="homeAccountID" class="text-yellow-400">...</span></div>     
-    
-      <h2 class="text-sm text-gray-400 font-semibold">Total Balance (USD)</h2>
-      <button id="toggleBalanceVisibility" class="text-gray-400 hover:text-yellow-400 transition">
-        <!-- SVG: Eye Icon -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-      </button>
-    </div>
-    <div class="flex justify-between items-center mt-1">
-      <p id="totalBalanceDisplay" class="text-4xl font-extrabold text-white">$0.00</p>
-      <button onclick="showPage('walletDetailsPage')" class="text-gray-400 hover:text-yellow-400 transition">
-        <!-- SVG: Wallet Icon -->
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-        </svg>
-      </button>
-    </div>
- </section>
-
-  <!-- ===== 2. ACTION BUTTONS (Deposit, Withdraw, Earn, Trade) ===== -->
-  <section class="quick-actions-container" 
-     style="overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-bottom: 28px;">
-  
-  <div class="quick-actions" 
-       style="display: inline-flex; gap: 12px; padding-bottom: 4px;">
-
-    <!-- Deposit -->
-    <button onclick="showPage('depositCoinSelectPage')" class="card"
-      style="min-width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 12px; padding: 16px; color: #fff; cursor: pointer; transition: 0.3s;">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2" 
-           viewBox="0 0 24 24" width="22" height="22" style="margin-right: 8px;">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V6m0 0l-7 7m7-7l7 7"/>
-      </svg>
-      <span style="font-weight: 600; font-size: 14px;">Deposit</span>
-    </button>
-
-    <!-- Withdraw -->
-    <button onclick="showWithdrawalTypeSheet()" class="card"
-      style="min-width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 12px; padding: 16px; color: #fff; cursor: pointer; transition: 0.3s;">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2" 
-           viewBox="0 0 24 24" width="22" height="22" style="margin-right: 8px;">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v13m0 0l7-7m-7 7l-7-7"/>
-      </svg>
-      <span style="font-weight: 600; font-size: 14px;">Withdraw</span>
-    </button>
-
-    <!-- Transfer -->
-    <button onclick="showtradeDepositTransferSheet()" class="card"
-      style="min-width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 12px; padding: 16px; color: #fff; cursor: pointer; transition: 0.3s;">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2" 
-           viewBox="0 0 24 24" width="22" height="22" style="margin-right: 8px;">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
-      </svg>
-      <span style="font-weight: 600; font-size: 14px;">Transfer</span>
-    </button>
-
-    <!-- Auto-Trade -->
-    <button onclick="showPage('tradePage')" class="card"
-      style="min-width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 12px; padding: 16px; color: #fff; cursor: pointer; transition: 0.3s;">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2" 
-           viewBox="0 0 24 24" width="22" height="22" style="margin-right: 8px;">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M11 3v18M7 7l4-4 4 4M13 21l4-4-4-4"/>
-      </svg>
-      <span style="font-weight: 600; font-size: 14px;">Auto-Trade</span>
-    </button>
-  </div>
-      
-<!-- Hide Scrollbar for Webkit Browsers -->
-<style>
-.quick-actions-container::-webkit-scrollbar {
-  display: none;
-}
-.card:hover {
-  background: #2b2b2b;
-  transform: translateY(-2px);
-}
-</style>
-  </section>
-
-<!-- ===== 5. TRENDING COINS / LIVE CHART ===== -->
-<section id="liveChartSection" class="px-4 mt-6">
-  <div class="flex flex-col">
-    <h2 class="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
-      Live Price Performance (BTC/USDT)
-    </h2>
-
-    <!-- Chart Container -->
-    <div
-      id="chartContainer"
-      class="bg-white dark:bg-gray-900 shadow-md rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700"
-      style="width: 100%; height: 480px; position: relative;"
-    >
-      <div id="tvchart" style="width: 100%; height: 100%;"></div>
-    </div>
-  </div>
-
-  <!-- ===== TradingView Widget Script ===== -->
-  <script type="text/javascript">
-    document.addEventListener("DOMContentLoaded", function () {
-      const containerId = "tvchart";
-      const scriptId = "tradingview-widget-script";
-
-      // Prevent multiple initializations
-      if (!window.tradingViewLoaded) {
-        const script = document.createElement("script");
-        script.id = scriptId;
-        script.src = "https://s3.tradingview.com/tv.js";
-        script.onload = () => {
-          window.tradingViewLoaded = true;
-          initTradingView();
-        };
-        document.body.appendChild(script);
-      } else {
-        initTradingView();
-      }
-
-      // Initialize the TradingView chart
-      function initTradingView() {
-        if (typeof TradingView === "undefined") return;
-
-        // Remove any previous chart instance to avoid overlapping
-        const existing = document.querySelector(`#${containerId} iframe`);
-        if (existing) existing.remove();
-
-        new TradingView.widget({
-          autosize: true,
-          symbol: "BINANCE:BTCUSDT",
-          interval: "15",
-          timezone: "Etc/UTC",
-          theme: document.documentElement.classList.contains("dark") ? "dark" : "light",
-          style: "1",
-          locale: "en",
-          toolbar_bg: "#f1f3f6",
-          enable_publishing: false,
-          hide_top_toolbar: false,
-          hide_legend: false,
-          save_image: false,
-          container_id: containerId,
-        });
-      }
-
-      // Re-render chart when theme changes (if you toggle dark/light mode dynamically)
-      const observer = new MutationObserver(() => initTradingView());
-      observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    });
-  </script>
-</section>
-        
-        
-
-  <!-- ===== 4. TOKEN HOLDINGS ===== -->
-  <section class="px-4 mt-6">
-    <h3 class="text-sm font-semibold text-gray-300 mb-2">Your Assets</h3>
-    <div class="bg-gray-900 rounded-2xl p-4">
-      <div id="tokenHoldingsList" class="space-y-3">
-        <p id="holdingsEmpty" class="text-gray-500 text-center text-sm">No token holdings yet. Deposit to start trading.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ===== 6. ACTIVITIES / ALERTS ===== -->
-  <section class="px-4 mt-6 mb-8">
-    <h3 class="text-sm font-semibold text-gray-300 mb-2">Recent Activities</h3>
-    <div id="activitiesHomeSummary" class="bg-gray-900 rounded-2xl p-4 space-y-3">
-      <div id="noActivities" class="text-gray-500 text-center text-xs">No recent activity.</div>
-      <button onclick="showPage('transactionsPage')" class="w-full text-center text-xs text-yellow-400 hover:underline mt-2">
-        View All Transactions
-      </button>
-    </div>
-  </section>
-
+<div class="flex justify-between items-end mt-2">  
+  <div>  
+    <h2 class="text-xs text-gray-400">Total Balance (USD)</h2>  
+    <p id="totalBalanceDisplay" class="text-4xl font-extrabold text-white leading-tight mt-1">$0.00</p>  
+  </div>  
+  <button onclick="showPage('walletDetailsPage')" class="text-gray-400 hover:text-yellow-400 transition">  
+    <!-- Wallet Icon -->  
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">  
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"  
+        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />  
+    </svg>  
+  </button>  
 </div>
+
+  </section>   
+            
+<!-- ===== 2. QUICK ACTION BUTTONS ===== -->  
+    <section class="quick-actions-container px-4 mt-4"   
+    style="overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch; scrollbar-width:none;">  <div class="quick-actions inline-flex gap-3 pb-2">  
+
+  <!-- Deposit -->  
+  <button onclick="showPage('depositCoinSelectPage')"   
+    class="card flex items-center justify-center min-w-[130px] px-4 py-3 rounded-xl border border-gray-800 bg-[#1a1a1a] hover:bg-[#2b2b2b] transition transform hover:-translate-y-[2px]">  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2"  
+         viewBox="0 0 24 24" width="22" height="22" class="mr-2">  
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V6m0 0l-7 7m7-7l7 7"/>  
+    </svg>  
+    <span class="font-semibold text-sm">Deposit</span>  
+  </button>  
+
+  <!-- Withdraw -->  
+  <button onclick="showWithdrawalTypeSheet()"   
+    class="card flex items-center justify-center min-w-[130px] px-4 py-3 rounded-xl border border-gray-800 bg-[#1a1a1a] hover:bg-[#2b2b2b] transition transform hover:-translate-y-[2px]">  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2"  
+         viewBox="0 0 24 24" width="22" height="22" class="mr-2">  
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v13m0 0l7-7m-7 7l-7-7"/>  
+    </svg>  
+    <span class="font-semibold text-sm">Withdraw</span>  
+  </button>  
+
+  <!-- Transfer -->  
+  <button onclick="showtradeDepositTransferSheet()"   
+    class="card flex items-center justify-center min-w-[130px] px-4 py-3 rounded-xl border border-gray-800 bg-[#1a1a1a] hover:bg-[#2b2b2b] transition transform hover:-translate-y-[2px]">  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2"  
+         viewBox="0 0 24 24" width="22" height="22" class="mr-2">  
+      <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>  
+    </svg>  
+    <span class="font-semibold text-sm">Transfer</span>  
+  </button>  
+
+  <!-- Auto-Trade -->  
+  <button onclick="showPage('tradePage')"   
+    class="card flex items-center justify-center min-w-[130px] px-4 py-3 rounded-xl border border-gray-800 bg-[#1a1a1a] hover:bg-[#2b2b2b] transition transform hover:-translate-y-[2px]">  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2"  
+         viewBox="0 0 24 24" width="22" height="22" class="mr-2">  
+      <path stroke-linecap="round" stroke-linejoin="round" d="M11 3v18M7 7l4-4 4 4M13 21l4-4-4-4"/>  
+    </svg>  
+    <span class="font-semibold text-sm">Auto-Trade</span>  
+  </button>  
+</div>
+
+  </section>   
+<!-- ===== 3. TOKEN HOLDINGS ===== -->  
+    <section class="px-4 mt-6">  
+    <h3 class="text-sm font-semibold text-gray-300 mb-2">Your Assets</h3>  
+    <div class="bg-[#0f0f0f] border border-gray-800 rounded-2xl p-4">  
+      <div id="tokenHoldingsList" class="space-y-3">  
+        <p id="holdingsEmpty" class="text-gray-500 text-center text-sm">  
+          No token holdings yet. Deposit to start trading.  
+        </p>  
+      </div>  
+    </div>  
+  </section>
         
+    <!-- ===== 4. TRENDING COINS / LIVE CHART ===== -->    
+      <section id="liveChartSection" class="px-4 mt-6">  
+    <div class="flex flex-col">  
+      <h2 class="text-base font-semibold mb-3 text-gray-300">Trending Coins & Live Prices</h2>  <!-- Trending Coins -->  
+  <div id="trendingCoins" class="flex gap-4 overflow-x-auto pb-3 mb-5 no-scrollbar"></div>  
+
+  <!-- Chart Container -->  
+  <div id="chartContainer"  
+    class="bg-[#0d0d0d] rounded-2xl overflow-hidden border border-gray-800"  
+    style="width:100%; height:480px;">  
+    <div id="tvchart" style="width:100%; height:100%;"></div>  
+  </div>  
+</div>
+<div>  
+<script type="text/javascript">  
+
+    document.addEventListener("DOMContentLoaded", function () {  
+      const COINGECKO_API = "https://api.coingecko.com/api/v3";  
+      const trendingContainer = document.getElementById("trendingCoins");  async function loadTrendingCoins() {  
+    try {  
+      const res = await fetch(`${COINGECKO_API}/search/trending`);  
+      const data = await res.json();  
+      trendingContainer.innerHTML = "";  
+
+      data.coins.slice(0, 8).forEach((item) => {  
+        const coin = item.item;  
+        const card = document.createElement("div");  
+        card.className = "coin-card";  
+        card.innerHTML = `  
+          <img src="${coin.large}" alt="${coin.name}" width="28" height="28" class="rounded-full">  
+          <div>  
+            <p class="text-sm font-semibold">${coin.name}</p>  
+            <p class="text-xs text-gray-500 uppercase">${coin.symbol}</p>  
+          </div>  
+          <div class="ml-auto text-right">  
+            <span class="text-xs font-semibold" id="price-${coin.id}">--</span>  
+          </div>`;  
+        trendingContainer.appendChild(card);  
+
+        fetch(`${COINGECKO_API}/simple/price?ids=${coin.id}&vs_currencies=usd&include_24hr_change=true`)  
+          .then(r => r.json())  
+          .then(priceData => {  
+            const p = priceData[coin.id];  
+            if (p) {  
+              const el = document.getElementById(`price-${coin.id}`);  
+              const change = p.usd_24h_change?.toFixed(2);  
+              el.innerHTML = `$${p.usd.toLocaleString()} <br>  
+                <span style="color:${change >= 0 ? '#16a34a' : '#dc2626'}">${change}%</span>`;  
+            }  
+          });  
+      });  
+    } catch (err) {  
+      trendingContainer.innerHTML = "<p class='text-sm text-gray-500'>Failed to load trending coins.</p>";  
+    }  
+  }  
+
+  loadTrendingCoins();  
+
+  // TradingView Chart Setup  
+  const containerId = "tvchart";  
+  const scriptId = "tradingview-widget-script";  
+
+  function initTradingView() {  
+    if (typeof TradingView === "undefined") return;  
+    const existing = document.querySelector(`#${containerId} iframe`);  
+    if (existing) existing.remove();  
+    new TradingView.widget({  
+      autosize: true,  
+      symbol: "BINANCE:BTCUSDT",  
+      interval: "15",  
+      timezone: "Etc/UTC",  
+      theme: "dark",  
+      style: "1",  
+      locale: "en",  
+      toolbar_bg: "#111",  
+      enable_publishing: false,  
+      hide_top_toolbar: false,  
+      container_id: containerId,  
+    });  
+  }  
+
+  if (!window.tradingViewLoaded) {  
+    const script = document.createElement("script");  
+    script.id = scriptId;  
+    script.src = "https://s3.tradingview.com/tv.js";  
+    script.onload = () => {  
+      window.tradingViewLoaded = true;  
+      initTradingView();  
+    };  
+    document.body.appendChild(script);  
+  } else {  
+    initTradingView();  
+  }  
+});
+
+  </script>  
+</div>  
+  </section>    
+             
+    <!-- ===== 5. RECENT ACTIVITIES ===== -->   
+    <section class="px-4 mt-6 mb-8">  
+    <h3 class="text-sm font-semibold text-gray-300 mb-2">Recent Activities</h3>  
+    <div id="activitiesHomeSummary" class="bg-[#0f0f0f] rounded-2xl border border-gray-800 p-4 space-y-3">  
+      <div id="noActivities" class="text-gray-500 text-center text-xs">No recent activity.</div>  
+      <button onclick="showPage('transactionsPage')"   
+        class="w-full text-center text-xs text-yellow-400 hover:underline mt-2">  
+        View All Transactions  
+      </button>  
+    </div>  
+  </section>  
+  </div>
 
         <!-- 5. MARKET PAGE -->
         <div id="marketPage" class="page p-4">
