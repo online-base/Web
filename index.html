@@ -334,6 +334,8 @@
   <!-- ===== 1. PORTFOLIO HEADER (Top Summary Section) ===== -->
   <section class="px-4 pt-4 pb-2">
     <div class="flex justify-between items-center">
+     <div class="text-xs text-gray-500 mt-1">Account ID: <span id="homeAccountID" class="text-yellow-400">...</span></div>     
+    
       <h2 class="text-sm text-gray-400 font-semibold">Total Balance (USD)</h2>
       <button id="toggleBalanceVisibility" class="text-gray-400 hover:text-yellow-400 transition">
         <!-- SVG: Eye Icon -->
@@ -345,10 +347,6 @@
         </svg>
       </button>
     </div>
-  
-    <div class="text-xs text-gray-500 mt-1">Account ID: <span id="homeAccountID" class="text-yellow-400">...</span></div>
-  </div>
-        
     <div class="flex justify-between items-center mt-1">
       <p id="totalBalanceDisplay" class="text-4xl font-extrabold text-white">$0.00</p>
       <button onclick="showPage('walletDetailsPage')" class="text-gray-400 hover:text-yellow-400 transition">
