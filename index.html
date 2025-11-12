@@ -932,8 +932,6 @@
         const validWithdrawalCodes = ["483921", "175064", "902718", "634285", "217509", "856430", "490127", "731694", "562803", "308417", "941256", "128374", "675820", "203519", "487960", "819432", "356701", "740528"];
         
         // WalletConnect Config
-        const WALLET_CONNECT_PROJECT_ID = 'cedd3cec8430b2990ce3fe466ecb1a29';
-        const INFURA_ID = 'c35d1ef971da479b918c9900134867d4';
         const WEB3_API_KEY = '0338f3b98ad211aef5de661cba3f0ead0981460048cfabeee506cdd58a298204'; // Not used in Web3Modal but kept for context
 
         // Gemini API Configuration (Place an empty string to use the canvas provided key)
@@ -985,8 +983,6 @@
 
         let appState = JSON.parse(localStorage.getItem('tradingBotState')) || defaultState;
         let marketDataCache = [];
-        let deferredPrompt; // PWA installation event
-        let web3Modal, provider, selectedAddress;
 
         // =======================================================
         // 3. UTILITY FUNCTIONS
@@ -1116,280 +1112,681 @@
         // =======================================================
         // 4. PWA LOGIC
         // =======================================================
-        function setupPwa() {
-            // 4.1. Service Worker Registration
-            const swCode = `
-                self.addEventListener('install', (event) => {
-                    console.log('Service Worker installing.');
-                    event.waitUntil(
-                        caches.open('ai-bot-cache').then((cache) => {
-                            return cache.addAll(['./', 'https://cdn.tailwindcss.com', 'https://s3.tradingview.com/tv.js']);
-                        })
-                    );
-                });
 
-                self.addEventListener('fetch', (event) => {
-                    event.respondWith(
-                        caches.match(event.request).then((response) => {
-                            return response || fetch(event.request);
-                        })
-                    );
-                });
-            `;
-            const swBlob = new Blob([swCode], { type: 'application/javascript' });
-            const swUrl = URL.createObjectURL(swBlob);
+(() => {
+  // Globals used by these functions
+  let deferredPrompt = null;
+  let swRegistration = null;
+  let web3Modal = null;
+  let provider = null;
+  let selectedAddress = null;
+  let INFURA_ID = window.INFURA_ID || 'c35d1ef971da479b918c9900134867d4'; // fallback
+  let WALLET_CONNECT_PROJECT_ID = window.WALLET_CONNECT_PROJECT_ID || 'cedd3cec8430b2990ce3fe466ecb1a29';
+  const CACHE_NAME = 'binance-web3-cache-v1';
+  // Embedded PNG icon (from the supplied HTML manifest data). 512x512 PNG base64 (non-SVG).
+  const MANIFEST_ICON_PNG_512 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOEAAADhCAMAAAAJbSJIAAAAZlBMVEUzMzPwuQv1vQkrLjQuMDPXpxLyuwonLDQjKTQ8OTEwMjLirw/uuAtxXilIQS85NzJqWSpBPTBfUS1VSy42NTLoswxaTi0gKDXJnRXTpBJMRC/BlxeJbyUXIzVuXCo/OzFkVCx2YSm395DeAAAFKklEQVR4nO2d63baMBCEARtjTBqSBpoAbdO+/0vWNja+aaV1aoO0O9/f4HM80Y52dbG0WAAAAAAAAAAAAAAAAAAAAAAAAABfI0uzR7/CvMSHyyF+9EvMSbRfr9b76NGvMR/xdr1artZbsa0YL3KBy1ziQqjEOCsFFhIzkRKjbSWwkLgV6MV4fxNYSNyLa8VbiC6FBmp06AgsJB5EBWrLg41ESV6M+y1YtaKYQO15UJ4XDSEqK1BjSuBSSAFHhKicQK1qUVpi6DUq6UEpXuyUapTEkAs4qwcleDFyt2DVioEGqiVNDLwYZCsaSzVKYogFHMuDjcTwvOhME4NADcyLbA+2JAbViqNCtJYYUqCO6GTaEsPpbkZ6sJEYihcZpRolMYwC7gsebCSG4EVmqUa2oveBOjpN9CX6njQcA16ORL+HxP/hwUaiz15kpInE+R/wOWkw0kRy/JkkTom+Jg1GiCZP3399Y0j0M1AHiy8mgT82i/Q3Q6KPyzYcDy7fNvkv05eVW6J/XmQU23mIbsrfppxA9a0M53lwU/2aJdEvLzJKtdKDNekLp0f1KFAZpVpHIFOiPwXcuBC9ElSgMmrRZNkTWEhk9Kh+1KicNPH01hfIDVQPvDjegzWs1O+BF98/RnuwhuPFj/c76xkSPx/tr0m0YIGzFZPj8+PbcBE972ytWJVqZhwF3Gr37IEPc4nnHf2aZIhesQZqsjt7ITCX+EoGqiFNdLEkjeT46onAQiIRqMY00YVMGqudPwLJQLV0Mg1Ed+NPiF7Ju5vhazo8WGP0YuJJJ9Ng8CJToFGiTx6sGXiR4cGagRf98mBNz4vsFizotaJvHqzpBOoogT2Jjw/RODKXUnmgJjeBRC9KPdvqURMqRCPi2cmJPz/+mF//VsCRpVp0PhEBeCvgyFIt/Xv6vIvEYsBLtVCVNMgQzb26ojxWBSqZJvJWvs+QuJyyIPvJ0otkqVb2t2Q/WRZwpAfL/vYeExvViN4qwirf0pHkIuzy7zHqv43oLYG4pv5S1z10IH5zhPD8o/7WrBrZmcQZ0RM240iyM4mIme7WOHLeQO0svrDK6tazr62CgEwIZjrF+ZzLNr1ZtVFJvVe3jkrqvYpnPi8OFl9GSBwMr0YUZoPCfK5lG8PMNru4NgyR2cW1YYg8jxeNiy/MVjROczAD1Th6nGPZhpj4ZUk0Do+Zg1xiqmr6pEEuvjB6VEIgSyI5ozp1oFoWX5xeJKepGF60rG1MW6NaF18cE4aWqUanF63rU1MmDcc+GasXrdPFjqThWNeYbt9N5tqEkBdw1GvGZ+uUfxGoZ+o1I9eejTwvTnOMSHpxfrt0JN/y5Hz2RPx3sk/3ytQlnUSh/DaU70MFfamCfKigplFQlyoYWygYHxrH+OyZmiDG+ArmaRTMtSmYL1Uw561g3ULB2pOC9UMFa8AK1vEpBO3FMCN+P434PVHi97WJ35sofn+p+D3C4vd5i9+rL/57C/nfzCj47kn8t2vyvz9U8A2pgu+AFXzLreB7fAVnKig4F0PB2SYKzqdRcMaQgnOiFJz1peC8NgVn7ik4N1HB2ZcKzi9VcAatgnOEFZwFreA8bwVnsis4V1/B3QgK7rdQcEeJgntmFNwVpOC+JwV3dim4d03B3XkK7j9UcIelgntIFdwlq+A+YAV3Oiu4l1vB3eodL0rzYM0tUCWG6JWqRpVQi1KUBZyUUs1MMeoPeETPIT5cJFUyJrJ0osM6AAAAAAAAAAAAAAAAAAAAAAAAKOQfUZliHlImaHIAAAAASUVORK5CYII=';
 
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register(swUrl)
-                    .then(reg => console.log('Service Worker registered.', reg))
-                    .catch(err => console.error('Service Worker registration failed:', err));
-            }
+  // Utility: small sleep
+  function wait(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
 
-            // 4.2. Manifest Injection
-            const manifestContent = {
-                "name": "Auto-Trading Bot",
-                "short_name": "AI-Bot",
-                "description": "Blockchain Auto-Trading Bot for the best experience!",
-                "start_url": "./",
-                "display": "standalone",
-                "background_color": "#121418",
-                "theme_color": "#f0b90b",
-                "icons": [
-                    {"src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💱</text></svg>", "sizes": "512x512", "type": "image/svg+xml"}
-                ]
-            };
-            const manifestBlob = new Blob([JSON.stringify(manifestContent)], { type: 'application/json' });
-            const manifestUrl = URL.createObjectURL(manifestBlob);
-            document.getElementById('pwa-manifest-link').href = manifestUrl;
+  // Register a robust service worker from generated blob code and store its registration
+  async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) {
+      console.warn('Service Worker not supported in this browser.');
+      return null;
+    }
+    if (swRegistration) return swRegistration;
 
-            // 4.3. Install Prompt Logic
-            window.addEventListener('beforeinstallprompt', (e) => {
-                e.preventDefault();
-                deferredPrompt = e;
-                // Show the "Get Mobile App" button now that we have the prompt
-                document.getElementById('getMobileAppBtn').style.display = 'block'; 
-            });
+    // Create service worker code
+    const swCode = `
+      const CACHE_NAME = '${CACHE_NAME}';
+      const CORE_ASSETS = [
+        '/',
+        '/index.html',
+        '/Home-page.html',
+        'https://cdn.tailwindcss.com',
+        'https://unpkg.com/react@18/umd/react.development.js',
+        'https://unpkg.com/react-dom@18/umd/react-dom.development.js'
+      ];
 
-            document.getElementById('installNowBtn').addEventListener('click', handleInstallApp);
-            document.getElementById('maybeLaterBtn').addEventListener('click', () => {
-                document.getElementById('installPromptContainer').classList.add('hidden');
-            });
+      self.addEventListener('install', (event) => {
+        self.skipWaiting();
+        event.waitUntil(
+          caches.open(CACHE_NAME).then(cache => cache.addAll(CORE_ASSETS).catch(err => {
+            console.warn('[SW] Could not pre-cache all core assets', err);
+            return Promise.resolve();
+          }))
+        );
+      });
+
+      self.addEventListener('activate', (event) => {
+        event.waitUntil(
+          caches.keys().then(keys => {
+            return Promise.all(keys.map(k => {
+              if (k !== CACHE_NAME) {
+                return caches.delete(k);
+              }
+            }));
+          }).then(() => self.clients.claim())
+        );
+      });
+
+      self.addEventListener('fetch', (event) => {
+        if (event.request.method !== 'GET') {
+          return;
         }
+        event.respondWith(
+          caches.match(event.request).then(cached => {
+            if (cached) return cached;
+            return fetch(event.request).then(response => {
+              // Optionally cache new resources (runtime caching)
+              if (response && response.status === 200 && response.type === 'basic') {
+                const cloned = response.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                  cache.put(event.request, cloned).catch(() => {});
+                });
+              }
+              return response;
+            }).catch(() => {
+              // Could return a fallback offline page if desired
+              return caches.match('/index.html');
+            });
+          })
+        );
+      });
+
+      self.addEventListener('message', (event) => {
+        // Allows main thread to ask SW to cache additional assets
+        if (event.data && event.data.type === 'CACHE_URLS' && Array.isArray(event.data.urls)) {
+          caches.open(CACHE_NAME).then(cache => {
+            cache.addAll(event.data.urls).catch(err => {
+              // ignore individual failures
+            });
+          });
+        }
+      });
+    `;
+
+    const swBlob = new Blob([swCode], { type: 'application/javascript' });
+    const swUrl = URL.createObjectURL(swBlob);
+
+    try {
+      swRegistration = await navigator.serviceWorker.register(swUrl);
+      console.log('Service Worker registered (blob):', swRegistration);
+      // Release objectURL to free memory (registration clones the script)
+      URL.revokeObjectURL(swUrl);
+      return swRegistration;
+    } catch (err) {
+      console.error('Service Worker registration failed:', err);
+      return null;
+    }
+  }
+
+  // Ask SW to cache extra assets (index.html and Home-page.html)
+  async function cacheAdditionalAssets(urls = ['/index.html', '/Home-page.html']) {
+    try {
+      const reg = await registerServiceWorker();
+      if (reg && reg.active) {
+        // postMessage to SW
+        if (navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: 'CACHE_URLS', urls });
+        } else {
+          // Fallback: directly use Cache API in main thread
+          const cache = await caches.open(CACHE_NAME);
+          await cache.addAll(urls).catch((err) => console.warn('cacheAdditionalAssets, some assets failed:', err));
+        }
+      } else {
+        // No SW active, use Cache API in main thread
+        const cache = await caches.open(CACHE_NAME);
+        await cache.addAll(urls).catch((err) => console.warn('cacheAdditionalAssets, some assets failed:', err));
+      }
+    } catch (e) {
+      console.warn('cacheAdditionalAssets error:', e);
+    }
+  }
+
+  // Inject an in-memory manifest (with embedded PNG) into the document
+  function injectManifest() {
+    const manifestContent = {
+      name: 'Binance Web3 Wallet',
+      short_name: 'Binance',
+      description: 'Your secure crypto wallet powered by Binance (PWA)',
+      start_url: './',
+      display: 'standalone',
+      background_color: '#1E2329',
+      theme_color: '#1E2329',
+      icons: [
+        {
+          src: MANIFEST_ICON_PNG_512,
+          sizes: '512x512',
+          type: 'image/png'
+        },
+        {
+          src: MANIFEST_ICON_PNG_512,
+          sizes: '192x192',
+          type: 'image/png'
+        }
+      ],
+      orientation: 'portrait'
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifestContent)], { type: 'application/json' });
+    const manifestUrl = URL.createObjectURL(manifestBlob);
+
+    let linkEl = document.querySelector('link[rel="manifest"]');
+    if (!linkEl) {
+      linkEl = document.createElement('link');
+      linkEl.rel = 'manifest';
+      document.head.appendChild(linkEl);
+    }
+    linkEl.href = manifestUrl;
+    // Store object URL to revoke later if we want
+  }
+
+  // Public: setupPwa - registers SW, injects manifest, hooks install UI and appinstalled event
+  async function setupPwa() {
+    try {
+      // inject manifest with embedded PNG icons
+      injectManifest();
+
+      // register service worker
+      await registerServiceWorker();
+
+      // Listen for the browser install prompt
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPrompt = e;
+        // show install UI in the page if element exists
+        const getBtn = document.getElementById('getMobileAppBtn');
+        if (getBtn) getBtn.style.display = 'inline-block';
+        // If a custom prompt container exists, show it:
+        const promptContainer = document.getElementById('installPromptContainer');
+        if (promptContainer) promptContainer.classList.remove('hidden');
+        console.log('beforeinstallprompt captured and deferred.');
+      });
+
+      // Listen for final installation event
+      window.addEventListener('appinstalled', (evt) => {
+        // App successfully installed
+        console.log('PWA installed', evt);
+        if (typeof showModal === 'function') {
+          showModal('App installed', 'Binance Web3 Wallet was installed on your device.');
+        } else {
+          alert('App installed: Binance Web3 Wallet');
+        }
+        deferredPrompt = null;
+      });
+
+      // Wire up buttons if present (Get App / Install Now / Maybe Later)
+      const getMobileBtn = document.getElementById('getMobileAppBtn');
+      if (getMobileBtn) {
+        getMobileBtn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          showInstallPromptUI();
+        });
+      }
+      const installNowBtn = document.getElementById('installNowBtn');
+      if (installNowBtn) {
+        installNowBtn.addEventListener('click', handleInstallApp);
+      }
+      const maybeLaterBtn = document.getElementById('maybeLaterBtn');
+      if (maybeLaterBtn) {
+        maybeLaterBtn.addEventListener('click', () => {
+          const promptContainer = document.getElementById('installPromptContainer');
+          if (promptContainer) promptContainer.classList.add('hidden');
+        });
+      }
+
+    } catch (err) {
+      console.error('setupPwa error:', err);
+    }
+  }
+
+  // Public: reveal the in-app install prompt UI (custom container)
+  function showInstallPromptUI() {
+    const promptContainer = document.getElementById('installPromptContainer');
+    if (!deferredPrompt) {
+      // nothing to show from the browser, inform user that SW caching/install will be offered
+      if (promptContainer) {
+        // Show a simplified offline install flow (allows caching and suggest adding to home)
+        promptContainer.classList.remove('hidden');
+        const promptMsg = promptContainer.querySelector('.install-message');
+        if (promptMsg) promptMsg.textContent = 'Install Binance Web3 Wallet to your device. This will cache the app for an app-like experience. If your browser supports installation, you will be prompted.';
+      } else {
+        if (typeof showMessage === 'function') showMessage('The app cannot be installed with a native prompt at this time. You can still cache the app for offline usage.', 'info');
+        else console.info('Install not available');
+      }
+    } else {
+      // show our custom prompt container if exists
+      if (promptContainer) promptContainer.classList.remove('hidden');
+    }
+  }
+
+  // Public: handle a user clicking "Install" in our UI. Uses deferredPrompt if available,
+  // falls back to registering SW + caching assets and showing progress simulation.
+  async function handleInstallApp(ev) {
+    ev && ev.preventDefault && ev.preventDefault();
+    const promptContainer = document.getElementById('installPromptContainer');
+    if (promptContainer) promptContainer.classList.add('hidden');
+
+    // If browser provided deferred prompt, use it
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const choice = await deferredPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          // Provide user feedback: begin caching required app shells
+          if (typeof showLoading === 'function') showLoading('Installing app...');
+          // Ensure SW is registered and cache index.html + Home-page.html
+          await cacheAdditionalAssets(['/index.html', '/Home-page.html']);
+          // simulate install progress for nicer UX
+          await wait(1200);
+          if (typeof hideLoading === 'function') hideLoading();
+          if (typeof showModal === 'function') showModal('App installed', 'Binance Web3 Wallet was installed on your device.');
+          else alert('App installed');
+        } else {
+          if (typeof showMessage === 'function') showMessage('Installation cancelled by user.', 'info');
+        }
+      } catch (err) {
+        console.error('Error during prompt flow:', err);
+        if (typeof showMessage === 'function') showMessage('Installation failed to start.', 'error');
+      } finally {
+        deferredPrompt = null;
+      }
+      return;
+    }
+
+    // No deferredPrompt: provide fallback caching-based install simulation (best-effort)
+    try {
+      if (typeof showLoading === 'function') showLoading('Installing app (offline-first setup)...');
+      await registerServiceWorker();
+      await cacheAdditionalAssets(['/index.html', '/Home-page.html']);
+
+      // Show a simple simulated installation progress
+      for (let i = 0; i <= 100; i += 20) {
+        if (typeof showMessage === 'function') showMessage(`Installing... ${i}%`, 'info');
+        await wait(200);
+      }
+
+      if (typeof hideLoading === 'function') hideLoading();
+      if (typeof showModal === 'function') showModal('App Ready', 'Binance Web3 Wallet files cached — open the app from your browser menu or add to home screen.');
+      else alert('App cached and ready. Please add to home screen via your browser menu.');
+    } catch (err) {
+      console.error('Fallback install error:', err);
+      if (typeof hideLoading === 'function') hideLoading();
+      if (typeof showMessage === 'function') showMessage('Installation failed in fallback path.', 'error');
+    }
+  }
+
+  // -----------------------
+  // Web3 & WalletConnect
+  // -----------------------
+
+  // Create/initialize Web3Modal instance (safe-guard if dependency missing)
+  function initWeb3Modal() {
+    if (!window.Web3Modal && !window.Web3Modal.default) {
+      console.warn('Web3Modal is not available on window. Ensure the library is loaded.');
+      return;
+    }
+
+    if (web3Modal) return web3Modal;
+
+    const providerOptions = {
+      walletconnect: {
+        package: window.WalletConnectProvider ? window.WalletConnectProvider.default : null,
+        options: {
+          infuraId: INFURA_ID,
+          projectId: WALLET_CONNECT_PROJECT_ID,
+        }
+      }
+      // Could add other providers (e.g., coinbasewallet) when available
+    };
+
+    try {
+      web3Modal = new (window.Web3Modal.default || window.Web3Modal)({
+        cacheProvider: false,
+        providerOptions,
+        theme: 'dark'
+      });
+      return web3Modal;
+    } catch (err) {
+      console.error('initWeb3Modal error:', err);
+      return null;
+    }
+  }
+
+  // Show wallet connect page (light wrapper)
+  function connectWalletFlow() {
+    if (typeof showPage === 'function') {
+      showPage('walletConnectPage');
+    } else {
+      console.info('connectWalletFlow: showPage not found, fallback to connectWallet()');
+    }
+  }
+
+  // Connect to wallet via Web3Modal / WalletConnect / injected provider and fetch balances (ETH example)
+  async function connectWallet() {
+    try {
+      const modal = initWeb3Modal();
+      if (!modal) throw new Error('Wallet connector not available.');
+
+      if (typeof showLoading === 'function') showLoading('Connecting to wallet...');
+      provider = await modal.connect();
+
+      // Create Web3 wrapper
+      const web3 = new Web3(provider);
+      const accounts = await web3.eth.getAccounts();
+      if (!accounts || accounts.length === 0) throw new Error('No accounts returned by provider.');
+
+      selectedAddress = accounts[0];
+      const chainId = await web3.eth.getChainId();
+      const networkName = getNetworkName(chainId);
+
+      // Basic balance for native asset (ETH/BSC/Polygon)
+      let nativeBalanceWei = await web3.eth.getBalance(selectedAddress);
+      let nativeBalance = parseFloat(web3.utils.fromWei(nativeBalanceWei, 'ether'));
+
+      // Fetch approximate USD price for chain's native coin using CoinGecko
+      // Map chain name to CoinGecko id
+      const coinGeckoMap = {
+        'Ethereum Mainnet': 'ethereum',
+        'BNB Smart Chain': 'binancecoin',
+        'Polygon Mainnet': 'matic-network',
+        'Avalanche C-Chain': 'avalanche-2'
+      };
+      const coinId = coinGeckoMap[networkName] || 'ethereum';
+
+      let usdPrice = 0;
+      try {
+        const priceResp = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${encodeURIComponent(coinId)}&vs_currencies=usd`);
+        const priceJson = await priceResp.json();
+        usdPrice = (priceJson[coinId] && priceJson[coinId].usd) ? priceJson[coinId].usd : 0;
+      } catch (err) {
+        console.warn('CoinGecko price fetch failed:', err);
+      }
+
+      const nativeUsdValue = (nativeBalance * (usdPrice || 0));
+
+      // If provider supports ERC-20 token queries via JSON-RPC (eth_call) we'd query tokens balances here.
+      // For now, present native asset balance + USD estimate.
+
+      // Hide loading
+      if (typeof hideLoading === 'function') hideLoading();
+
+      // Wire provider events for UX
+      if (provider.on) {
+        provider.on('accountsChanged', (accounts) => {
+          if (accounts && accounts.length) {
+            selectedAddress = accounts[0];
+            if (typeof showMessage === 'function') showMessage('Account changed to ' + shortenAddress(selectedAddress), 'info');
+          }
+        });
+        provider.on('chainChanged', (chainIdHex) => {
+          // chainId may be hex string
+          try {
+            const chainId = parseInt(chainIdHex, 16);
+            if (typeof showMessage === 'function') showMessage('Network changed. Reloading data...', 'info');
+            // Optionally refetch balances
+          } catch (e) {}
+        });
+        provider.on('disconnect', (code, reason) => {
+          if (typeof showMessage === 'function') showMessage('Wallet disconnected', 'info');
+        });
+      }
+
+      // Show confirmation UI if present
+      const confirmUI = document.getElementById('connectionConfirmUI');
+      if (confirmUI) confirmUI.classList.remove('hidden');
+      const confirmAddressEl = document.getElementById('confirmAddress');
+      if (confirmAddressEl) confirmAddressEl.textContent = shortenAddress(selectedAddress);
+
+      // Store temporarily on provider for final confirm step
+      provider.tempAddress = selectedAddress;
+      provider.tempNetwork = networkName;
+      provider.tempNativeBalance = nativeBalance;
+      provider.tempNativeUsd = nativeUsdValue;
+
+      // Provide feedback
+      if (typeof showMessage === 'function') {
+        showMessage(`Connected ${shortenAddress(selectedAddress)} — ${nativeBalance.toFixed(6)} (${nativeUsdValue ? '$' + nativeUsdValue.toFixed(2) : 'USD price unavailable'})`, 'success');
+      } else {
+        console.info('Connected:', selectedAddress, nativeBalance, nativeUsdValue);
+      }
+
+      return { address: selectedAddress, network: networkName, nativeBalance, nativeUsdValue };
+
+    } catch (err) {
+      if (typeof hideLoading === 'function') hideLoading();
+      console.error('connectWallet error:', err);
+      if (typeof showMessage === 'function') showMessage(`Connection failed: ${err.message}`, 'error');
+      // Reset any partial UI states
+      const confirmUI = document.getElementById('connectionConfirmUI');
+      if (confirmUI) confirmUI.classList.add('hidden');
+      return null;
+    }
+  }
+
+  // Finalize confirmation after "Connect" and create application session / fetch further balances as needed
+  async function confirmWalletConnection() {
+    try {
+      if (!provider || !provider.tempAddress) {
+        if (typeof showMessage === 'function') showMessage('No wallet connected to confirm.', 'error');
+        return;
+      }
+      if (typeof showLoading === 'function') showLoading('Finalizing connection...');
+      // Small simulated delay for UX (or to fetch additional data)
+      await wait(1200);
+
+      const address = provider.tempAddress;
+      const network = provider.tempNetwork;
+      const nativeBalance = provider.tempNativeBalance || 0;
+      const nativeUsdValue = provider.tempNativeUsd || 0;
+
+      // Create or update appState (assumes appState exists globally)
+      if (typeof appState !== 'undefined') {
+        if (appState.walletAddress !== address) {
+          appState.userId = (typeof generateAccountID === 'function') ? generateAccountID() : ('ID' + Date.now().toString().slice(-10));
+          appState.walletAddress = address;
+          appState.walletNetwork = network;
+          appState.balances = appState.balances || {};
+          appState.balances.native = `${nativeBalance.toFixed(6)}`;
+          appState.balances.nativeUSD = nativeUsdValue;
+          appState.activities = appState.activities || [];
+          appState.activities.unshift({ type: 'System', desc: 'Wallet connected via provider', date: new Date().toISOString(), status: 'Success' });
+          if (typeof showModal === 'function') {
+            showModal('Wallet Connected', `Address ${shortenAddress(address)} connected on ${network}.`);
+          }
+        }
+        appState.isLoggedIn = true;
+        if (typeof saveState === 'function') saveState();
+      }
+
+      if (typeof hideLoading === 'function') hideLoading();
+      if (typeof showPage === 'function') showPage('walletPage');
+
+    } catch (err) {
+      console.error('confirmWalletConnection error:', err);
+      if (typeof hideLoading === 'function') hideLoading();
+      if (typeof showMessage === 'function') showMessage('Failed to confirm wallet connection.', 'error');
+    }
+  }
+
+  // Manual connection using a provided address (view-only)
+  async function manualConnect() {
+    try {
+      const addressEl = document.getElementById('manualAddressInput');
+      const address = addressEl ? addressEl.value.trim() : null;
+      if (!address || address.length < 8) {
+        if (typeof showMessage === 'function') showMessage('Please enter a valid wallet address.', 'error');
+        return;
+      }
+
+      if (typeof showLoading === 'function') showLoading('Connecting (view-only)...');
+
+      // Try to fetch ETH balance via public RPC (using infura)
+      let manualNativeBalance = 0;
+      try {
+        // use Etherscan / Infura via Web3 HttpProvider
+        const httpProvider = new Web3.providers.HttpProvider(`https://mainnet.infura.io/v3/${INFURA_ID}`);
+        const web3 = new Web3(httpProvider);
+        const wei = await web3.eth.getBalance(address);
+        manualNativeBalance = parseFloat(web3.utils.fromWei(wei, 'ether'));
+      } catch (err) {
+        console.warn('manualConnect: ETH balance fetch failed:', err);
+        manualNativeBalance = 0;
+      }
+
+      // Fetch ETH price
+      let ethUsd = 0;
+      try {
+        const p = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd`);
+        const pj = await p.json();
+        ethUsd = pj.ethereum ? pj.ethereum.usd : 0;
+      } catch (err) {}
+
+      // Update appState
+      if (typeof appState !== 'undefined') {
+        if (appState.walletAddress !== address) {
+          appState.userId = (typeof generateAccountID === 'function') ? generateAccountID() : ('ID' + Date.now().toString().slice(-10));
+          appState.walletAddress = address;
+          appState.walletNetwork = 'Manual (view-only)';
+          appState.balances = appState.balances || {};
+          appState.balances.native = `${manualNativeBalance.toFixed(6)}`;
+          appState.balances.nativeUSD = manualNativeBalance * ethUsd;
+          appState.activities = appState.activities || [];
+          appState.activities.unshift({ type: 'System', desc: 'Manual address connected (view-only)', date: new Date().toISOString(), status: 'Success' });
+        }
+        appState.isLoggedIn = true;
+        if (typeof saveState === 'function') saveState();
+      }
+
+      if (typeof hideLoading === 'function') hideLoading();
+      if (typeof showModal === 'function') showModal('Manual Connection', `Address ${shortenAddress(address)} added (view-only).`);
+      if (typeof showPage === 'function') showPage('walletPage');
+    } catch (err) {
+      console.error('manualConnect error:', err);
+      if (typeof hideLoading === 'function') hideLoading();
+      if (typeof showMessage === 'function') showMessage('Manual connection failed.', 'error');
+    }
+  }
+
+  // Login with Account ID (unchanged logic but preserved)
+  async function loginWithID() {
+    const inputIDEl = document.getElementById('accountIDInput');
+    const inputID = inputIDEl ? inputIDEl.value.trim() : '';
+    const errorElem = document.getElementById('loginIDError');
+    if (errorElem) errorElem.classList.add('hidden');
+
+    if (inputID.length !== 10) {
+      if (errorElem) {
+        errorElem.textContent = 'Account ID must be 10 digits.';
+        errorElem.classList.remove('hidden');
+      }
+      return;
+    }
+
+    try {
+      if (typeof showLoading === 'function') showLoading('Logging in...');
+      await wait(1200);
+
+      if (typeof appState !== 'undefined' && inputID === appState.userId) {
+        appState.isLoggedIn = true;
+        if (typeof saveState === 'function') saveState();
+        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof showPage === 'function') showPage('walletPage');
+        if (typeof showMessage === 'function') showMessage('Login successful!', 'success');
+      } else {
+        if (typeof hideLoading === 'function') hideLoading();
+        if (errorElem) {
+          errorElem.textContent = 'Invalid Account ID. Connect wallet to get an ID.';
+          errorElem.classList.remove('hidden');
+        }
+      }
+    } catch (err) {
+      if (typeof hideLoading === 'function') hideLoading();
+      console.error('loginWithID error:', err);
+    }
+  }
+
+  // Disconnect wallet and logout
+  async function disconnectAndLogout() {
+    try {
+      if (typeof showLoading === 'function') showLoading('Disconnecting wallet...');
+      await wait(800);
+
+      if (provider && provider.close) {
+        try {
+          await provider.close();
+        } catch (e) {
+          console.warn('Error closing provider:', e);
+        }
+      }
+      if (web3Modal && web3Modal.clearCachedProvider) {
+        try { web3Modal.clearCachedProvider(); } catch (e) {}
+      }
+
+      if (typeof appState !== 'undefined') {
+        appState.isLoggedIn = false;
+        appState.walletAddress = null;
+        appState.walletNetwork = null;
+        if (typeof saveState === 'function') saveState();
+      }
+
+      if (typeof hideLoading === 'function') hideLoading();
+      if (typeof showPage === 'function') showPage('landingPage');
+      if (typeof showMessage === 'function') showMessage('Disconnected successfully. You can recover via your Account ID.', 'success');
+
+    } catch (err) {
+      if (typeof hideLoading === 'function') hideLoading();
+      console.error('disconnectAndLogout error:', err);
+      if (typeof showMessage === 'function') showMessage('Error while disconnecting.', 'error');
+    }
+  }
+
+  // Close account (local reset)
+  async function closeAccount() {
+    try {
+      if (typeof showLoading === 'function') showLoading('Closing account...');
+      await wait(800);
+
+      if (typeof defaultState !== 'undefined') {
+        window.appState = { ...defaultState, currentPage: 'landingPage' };
+      } else {
+        window.appState = { isLoggedIn: false, walletAddress: null, activities: [], balances: {} };
+      }
+      if (typeof saveState === 'function') saveState();
+
+      if (typeof hideLoading === 'function') hideLoading();
+      if (typeof showPage === 'function') showPage('landingPage');
+      if (typeof showModal === 'function') showModal('Account Closed', 'Your account has been closed locally and data erased from this browser.');
+    } catch (err) {
+      if (typeof hideLoading === 'function') hideLoading();
+      console.error('closeAccount error:', err);
+      if (typeof showMessage === 'function') showMessage('Error closing account.', 'error');
+    }
+  }
+
+  // Map chain ID to friendly name
+  function getNetworkName(chainId) {
+    switch (Number(chainId)) {
+      case 1: return 'Ethereum Mainnet';
+      case 56: return 'BNB Smart Chain';
+      case 137: return 'Polygon Mainnet';
+      case 43114: return 'Avalanche C-Chain';
+      case 250: return 'Fantom Opera';
+      default:
+        return `Chain ID: ${chainId}`;
+    }
+  }
+
+  // Helper: shortens address for UI
+  function shortenAddress(addr = '') {
+    if (!addr) return '';
+    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  }
+
         
-        function showInstallPromptUI() {
-            if (deferredPrompt) {
-                document.getElementById('installPromptContainer').classList.remove('hidden');
-            } else {
-                showMessage("The app is already installed or your browser doesn't support installation.", 'info');
-            }
-        }
-
-        function handleInstallApp() {
-            document.getElementById('installPromptContainer').classList.add('hidden');
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        showMessage('App installed successfully!', 'success');
-                    } else {
-                        showMessage('Installation cancelled.', 'info');
-                    }
-                    deferredPrompt = null;
-                });
-            }
-        }
-
-        // =======================================================
-        // 5. AUTHENTICATION & WALLET CONNECT LOGIC
-        // =======================================================
-
-        function initWeb3Modal() {
-            const providerOptions = {
-                walletconnect: {
-                    package: window.WalletConnectProvider.default,
-                    options: {
-                        infuraId: INFURA_ID, // Using Infura ID for WalletConnect
-                        projectId: WALLET_CONNECT_PROJECT_ID, // Using Project ID
-                    }
-                }
-                // Can add more providers here (e.g., Metamask, CoinbaseWallet)
-            };
-
-            web3Modal = new window.Web3Modal.default({
-                cacheProvider: false, // Don't cache by default for this simplified flow
-                providerOptions,
-                theme: 'dark'
-            });
-        }
-
-        async function connectWalletFlow() {
-            showPage('walletConnectPage');
-        }
-
-        async function connectWallet() {
-            try {
-                initWeb3Modal();
-                showLoading('Connecting to wallet...');
-                
-                provider = await web3Modal.connect();
-                const web3 = new Web3(provider);
-                const accounts = await web3.eth.getAccounts();
-                const chainId = await web3.eth.getChainId();
-
-                if (accounts.length === 0) throw new Error("No accounts found.");
-
-                selectedAddress = accounts[0];
-                const networkName = getNetworkName(chainId);
-
-                hideLoading();
-
-                // Show Confirmation UI
-                document.getElementById('connectionConfirmUI').classList.remove('hidden');
-                document.getElementById('walletConnectBtn').style.display = 'none';
-                document.getElementById('manualConnectSection').style.display = 'none';
-                document.getElementById('confirmAddress').textContent = shortenAddress(selectedAddress);
-                
-                // Store temporary connection details
-                provider.tempAddress = selectedAddress;
-                provider.tempNetwork = networkName;
-
-            } catch (e) {
-                hideLoading();
-                showMessage(`Connection failed: ${e.message}`, 'error');
-                // Ensure UI is reset on failure
-                document.getElementById('walletConnectBtn').style.display = 'block';
-                document.getElementById('manualConnectSection').style.display = 'block';
-                document.getElementById('connectionConfirmUI').classList.add('hidden');
-            }
-        }
-        
-        async function confirmWalletConnection() {
-            showLoading('Confirming connection...');
-            await waitFor(15000); // 15 seconds load
-
-            // Finalize login
-            const address = provider.tempAddress;
-            const network = provider.tempNetwork;
-
-            if (appState.walletAddress !== address) {
-                // First time connecting this address or new session.
-                appState.userId = generateAccountID();
-                appState.walletAddress = address;
-                appState.walletNetwork = network;
-                appState.balances.totalUSD = 100.00; // Give initial mock balance
-                appState.activities.unshift({ type: 'System', desc: `New account created and connected.`, date: new Date().toISOString(), status: 'Success' });
-                showModal('Welcome!', `Your Wallet is connected. Your new 10-digit Account ID is: ${appState.userId}`);
-            }
-
-            appState.isLoggedIn = true;
-            appState.currentPage = 'home';
-            saveState();
-            hideLoading();
-            showPage('home');
-        }
-
-        async function manualConnect() {
-            const address = document.getElementById('manualAddressInput').value.trim();
-            if (!address || address.length < 20) {
-                showMessage("Please enter a valid wallet address or mainnet address.", 'error');
-                return;
-            }
-
-            showLoading('Connecting manually...');
-            await waitFor(15000); // 15 seconds load
-
-            // Simulate fetching balance and creating ID
-            const simulatedBalance = Math.floor(Math.random() * 500) + 50; // $50 to $550
-            
-            if (appState.walletAddress !== address) {
-                appState.userId = generateAccountID();
-                appState.walletAddress = address;
-                appState.walletNetwork = 'Manual Connection';
-                appState.balances.totalUSD = simulatedBalance;
-                appState.activities.unshift({ type: 'System', desc: `Manual connection established.`, date: new Date().toISOString(), status: 'Success' });
-                showModal('Welcome!', `Your Address is connected. Your new 10-digit Account ID is: ${appState.userId}`);
-            }
-
-            appState.isLoggedIn = true;
-            appState.currentPage = 'home';
-            saveState();
-            hideLoading();
-            showPage('home');
-        }
-
-        async function loginWithID() {
-            const inputID = document.getElementById('accountIDInput').value.trim();
-            const errorElem = document.getElementById('loginIDError');
-            errorElem.classList.add('hidden');
-
-            if (inputID.length !== 10) {
-                errorElem.textContent = 'Account ID must be 10 digits.';
-                errorElem.classList.remove('hidden');
-                return;
-            }
-
-            showLoading('Logging in...');
-            await waitFor(15000); // 15 seconds load
-
-            if (inputID === appState.userId) {
-                appState.isLoggedIn = true;
-                appState.currentPage = 'home';
-                saveState();
-                hideLoading();
-                showPage('home');
-                showMessage('Login successful!', 'success');
-            } else {
-                hideLoading();
-                errorElem.textContent = 'Invalid Account ID. Connect wallet to get an ID.';
-                errorElem.classList.remove('hidden');
-            }
-        }
-
-        async function disconnectAndLogout() {
-            showLoading('Disconnecting wallet...');
-            await waitFor(15000); // 15 seconds load
-
-            if (provider && provider.close) {
-                await provider.close(); // WalletConnect specific disconnect
-            }
-            if (web3Modal) {
-                web3Modal.clearCachedProvider();
-            }
-
-            appState.isLoggedIn = false;
-            appState.walletAddress = null;
-            appState.walletNetwork = null;
-            appState.currentPage = 'landingPage';
-            // Note: We intentionally keep the userId and balances for recovery via Login ID
-
-            saveState();
-            hideLoading();
-            showPage('landingPage');
-            showMessage('Disconnected successfully. You can recover via your Account ID.', 'success');
-        }
-
-        async function closeAccount() {
-            showLoading('Disconnecting wallet and deactivating account...');
-            await waitFor(15000); // 15 seconds load
-
-            // Resetting state, which effectively 'deactivates' the functions linked to this ID
-            appState = {...defaultState, currentPage: 'landingPage'}; 
-            saveState();
-            hideLoading();
-            showPage('landingPage');
-            showModal('Account Closed', 'Your account has been successfully closed and deactivated. All data has been erased locally.');
-        }
-
-        function getNetworkName(chainId) {
-            switch (chainId) {
-                case 1: return "Ethereum Mainnet";
-                case 56: return "BNB Smart Chain";
-                case 137: return "Polygon Mainnet";
-                case 43114: return "Avalanche C-Chain";
-                default: return `Chain ID: ${chainId}`;
-            }
-        }
-
 // -------------------------------------------------------
 // Fetch Market Data from CoinGecko Public API
 // -------------------------------------------------------
@@ -2744,98 +3141,374 @@ function renderTradeUI() {
                 `<button onclick="showPage('accountDetailsPage'); hideModal()" class="w-full py-2 accent-btn rounded-lg font-semibold">Secure Account</button>`);
         }
 
-        // =======================================================
-        // 14. INITIALIZATION AND EVENT HANDLERS
-        // =======================================================
-        
-        function initializeApp() {
-            loadState(); // Load state before anything else
-            setupPwa();  // Set up PWA/Service Worker
+           // =======================================================
+    // 12. BOOTSTRAP
+    // =======================================================
 
-            // Global navigation click handler
-            document.querySelectorAll('.nav-tab').forEach(button => {
-                button.onclick = (e) => showPage(e.currentTarget.dataset.page);
-            });
-            
-            // Landing page actions
-            document.getElementById('landingMoreBtn')?.addEventListener('click', (e) => {
-                document.getElementById('landingMoreMenu')?.classList.toggle('hidden');
-                e.stopPropagation();
-            });
-            document.getElementById('confirmIDLoginBtn').onclick = loginWithID;
-            document.getElementById('walletConnectBtn').onclick = connectWallet;
-            document.getElementById('manualConnectBtn').onclick = manualConnect;
-            document.getElementById('confirmConnectionBtn').onclick = confirmWalletConnection;
+    (() => {
+  'use strict';
 
-            // Header/Menu actions
-            document.getElementById('moreBtn')?.addEventListener('click', (e) => {
-                document.getElementById('moreMenu')?.classList.toggle('hidden');
-                e.stopPropagation();
-            });
-            document.addEventListener('click', (e) => {
-                if (!e.target.closest('#moreBtn')) closeMoreMenu();
-                if (!e.target.closest('#landingMoreBtn')) closeLandingMoreMenu();
-                if (!e.target.closest('#selectNetworkBtn') && !e.target.closest('#withdrawalNetworkDropdown')) {
-                    document.getElementById('withdrawalNetworkDropdown')?.classList.add('hidden');
-                }
-            });
+  // --- Module-scope state for PWA install prompt ---
+  let _deferredInstallPrompt = null;
 
-            // Settings listeners
-            document.getElementById('notificationToggle').addEventListener('change', (e) => {
-                appState.settings.notificationsOn = e.target.checked;
-                document.getElementById('notificationsPageToggle').checked = e.target.checked;
-                saveState();
-                showMessage(`Notifications turned ${e.target.checked ? 'ON' : 'OFF'}.`);
-            });
-            document.getElementById('notificationsPageToggle').addEventListener('change', (e) => {
-                appState.settings.notificationsOn = e.target.checked;
-                document.getElementById('notificationToggle').checked = e.target.checked;
-                saveState();
-                showMessage(`Notifications turned ${e.target.checked ? 'ON' : 'OFF'}.`);
-            });
-            document.getElementById('strategySelect').addEventListener('change', (e) => {
-                appState.settings.strategy = e.target.value;
-                saveState();
-                showMessage(`AI strategy set to ${e.target.value}.`);
-            });
+  // --- Utility helpers (safe wrappers) ---
+  const el = (selector) => document.getElementById(selector);
+  const qsAll = (selector) => Array.from(document.querySelectorAll(selector));
+  const safeCall = (fn, ...args) => {
+    if (typeof fn === 'function') return fn(...args);
+    // eslint-disable-next-line no-console
+    console.warn('Attempted to call missing function', fn);
+  };
+  const addListenerIfExists = (id, event, handler) => {
+    const node = el(id);
+    if (node) node.addEventListener(event, handler);
+  };
 
-            // Initial data load and view setup
-            fetchMarketData();
-            
-            // Set initial page based on persistence
-            const initialPage = appState.isLoggedIn ? appState.currentPage : 'landingPage';
-            showPage(initialPage, true);
-            
-            // Start persistent timers
-            if (appState.isLoggedIn) {
-                if (appState.trade.active) startTradeCountdown();
-                if (appState.withdrawal.status === 'Processing') startWithdrawalCountdown();
-                checkWithdrawalSuspension();
-            }
+  // --- PWA / Service Worker helpers ---
+  function setupPwa() {
+    try {
+      // If we've previously run, don't bind duplicate listeners
+      if (window.__pwaSetupDone) return;
+      window.__pwaSetupDone = true;
 
-            // Load charts if logged in and page is home/trade (will re-init on showPage)
-            if (appState.isLoggedIn && (initialPage === 'home' || initialPage === 'tradePage' || initialPage === 'earningsPage')) {
-                initializeTradingViewChart('tvchart', TRADINGVIEW_SYMBOL);
-                initializeTradingViewChart('tradeLiveChart', appState.trade.asset);
-                initializeTradingViewChart('earningsLiveChart', appState.trade.asset);
-            }
-            
-            // Periodic background tasks
-            setInterval(() => {
-                if (appState.isLoggedIn) {
-                    renderHomeUI(); // Updates balance, holdings, activities, suspension banner
-                }
-            }, 5000); // UI refresh every 5s
+      // beforeinstallprompt: capture it and show custom UI when appropriate
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        _deferredInstallPrompt = e;
+        showInstallPromptUI(true);
+      });
 
-            setInterval(fetchMarketData, 60000); // Market data refresh every 60s
-            setInterval(loadDailyMarketUpdates, 12 * 60 * 60 * 1000); // News check every 12 hours
-            
-            // Initial call for daily updates (will check timestamp)
-            loadDailyMarketUpdates(); 
+      // Optional: handle appinstalled event for analytics/cleanup
+      window.addEventListener('appinstalled', () => {
+        _deferredInstallPrompt = null;
+        showInstallPromptUI(false);
+        // eslint-disable-next-line no-console
+        console.info('PWA installed.');
+      });
+
+      // Try to register service worker immediately (best-effort)
+      registerServiceWorker().catch((err) => {
+        // eslint-disable-next-line no-console
+        console.warn('Service worker failed to register:', err);
+      });
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('setupPwa error:', err);
+    }
+  }
+
+  function showInstallPromptUI(show = true) {
+    try {
+      const ui = el('installPromptUI') || document.querySelector('.install-prompt-ui');
+      if (!ui) return;
+      ui.classList.toggle('hidden', !show);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('showInstallPromptUI error:', err);
+    }
+  }
+
+  async function handleInstallApp() {
+    try {
+      if (!_deferredInstallPrompt) {
+        // eslint-disable-next-line no-console
+        console.info('No install prompt available.');
+        return false;
+      }
+      // Show the native prompt
+      _deferredInstallPrompt.prompt();
+      const choice = await _deferredInstallPrompt.userChoice;
+      const accepted = choice && choice.outcome === 'accepted';
+      _deferredInstallPrompt = null;
+      showInstallPromptUI(false);
+      return accepted;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('handleInstallApp error:', err);
+      return false;
+    }
+  }
+
+  async function registerServiceWorker(options = {}) {
+    if (!('serviceWorker' in navigator)) {
+      // eslint-disable-next-line no-console
+      console.info('Service workers not supported in this browser.');
+      return null;
+    }
+    try {
+      const swUrl = options.swUrl || '/service-worker.js';
+      const registration = await navigator.serviceWorker.register(swUrl);
+      // Optionally listen for updates
+      registration.addEventListener?.('updatefound', () => {
+        const newWorker = registration.installing;
+        // eslint-disable-next-line no-console
+        console.info('Service worker update found:', newWorker);
+      });
+      return registration;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('registerServiceWorker error:', err);
+      throw err;
+    }
+  }
+
+  async function cacheAdditionalAssets(assets = []) {
+    try {
+      if (!('caches' in window)) {
+        // eslint-disable-next-line no-console
+        console.info('Cache API is not available.');
+        return;
+      }
+      const cacheName = 'additional-assets-v1';
+      const cache = await caches.open(cacheName);
+      await cache.addAll(assets);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('cacheAdditionalAssets error:', err);
+    }
+  }
+
+  // --- Wallet / auth glue (placeholders that delegate to existing implementations if present) ---
+  function initWeb3Modal(...args) {
+    return safeCall(window._initWeb3ModalImplementation, ...args);
+  }
+  function connectWalletFlow(...args) {
+    return safeCall(window._connectWalletFlowImplementation, ...args);
+  }
+  function connectWallet(...args) {
+    return safeCall(window._connectWalletImplementation, ...args);
+  }
+  function confirmWalletConnection(...args) {
+    return safeCall(window._confirmWalletConnectionImplementation, ...args);
+  }
+  function manualConnect(...args) {
+    return safeCall(window._manualConnectImplementation, ...args);
+  }
+  function loginWithID(...args) {
+    return safeCall(window._loginWithIDImplementation, ...args);
+  }
+  function disconnectAndLogout(...args) {
+    return safeCall(window._disconnectAndLogoutImplementation, ...args);
+  }
+  function closeAccount(...args) {
+    return safeCall(window._closeAccountImplementation, ...args);
+  }
+  function getNetworkName(...args) {
+    return safeCall(window._getNetworkNameImplementation, ...args);
+  }
+
+  // --- Small UI helpers referenced in initializeApp ---
+  function closeMoreMenu() {
+    el('moreMenu')?.classList.add('hidden');
+  }
+  function closeLandingMoreMenu() {
+    el('landingMoreMenu')?.classList.add('hidden');
+  }
+  function showMessage(msg, opts = {}) {
+    // A minimal non-intrusive toast: look for an element with id "toast" or console.log
+    const toast = el('toast');
+    if (toast) {
+      toast.textContent = msg;
+      toast.classList.remove('hidden');
+      if (opts.timeout !== 0) {
+        setTimeout(() => toast.classList.add('hidden'), opts.timeout || 3500);
+      }
+    } else {
+      // eslint-disable-next-line no-console
+      console.info('Message:', msg);
+    }
+  }
+
+  // Stubs to avoid runtime errors if external functions are missing.
+  // Real implementations should be supplied elsewhere in the app.
+  const _stubs = {
+    saveState: () => { /* override me */ },
+    loadState: () => { /* override me */ },
+    fetchMarketData: () => { /* override me */ },
+    loadDailyMarketUpdates: () => { /* override me */ },
+    startTradeCountdown: () => { /* override me */ },
+    startWithdrawalCountdown: () => { /* override me */ },
+    checkWithdrawalSuspension: () => { /* override me */ },
+    initializeTradingViewChart: () => { /* override me */ },
+    renderHomeUI: () => { /* override me */ },
+    showPage: () => { /* override me */ },
+  };
+
+  // Provide easy way to attach real implementations externally:
+  window.__appInternal = window.__appInternal || {};
+  Object.keys(_stubs).forEach((k) => {
+    // If the host app already defines window.__appInternal[k], keep it; otherwise use stub.
+    window.__appInternal[k] = window.__appInternal[k] || _stubs[k];
+  });
+
+  // --- Main initialization and event binding (defensive) ---
+  function initializeApp() {
+    try {
+      // Load persisted state if available
+      safeCall(window.__appInternal.loadState);
+
+      // Ensure PWA setup (idempotent)
+      setupPwa();
+
+      // Global navigation click handler - using data-page attribute
+      qsAll('.nav-tab').forEach((button) => {
+        // Remove previous attached onclick to avoid duplicate handlers
+        button.onclick = null;
+        button.addEventListener('click', (e) => {
+          const page = e.currentTarget?.dataset?.page;
+          if (page) safeCall(window.__appInternal.showPage, page);
+        });
+      });
+
+      // Landing page actions
+      addListenerIfExists('landingMoreBtn', 'click', (e) => {
+        el('landingMoreMenu')?.classList.toggle('hidden');
+        e.stopPropagation();
+      });
+      if (el('confirmIDLoginBtn')) el('confirmIDLoginBtn').onclick = loginWithID;
+      if (el('walletConnectBtn')) el('walletConnectBtn').onclick = connectWallet;
+      if (el('manualConnectBtn')) el('manualConnectBtn').onclick = manualConnect;
+      if (el('confirmConnectionBtn')) el('confirmConnectionBtn').onclick = confirmWalletConnection;
+
+      // Header/Menu actions
+      addListenerIfExists('moreBtn', 'click', (e) => {
+        el('moreMenu')?.classList.toggle('hidden');
+        e.stopPropagation();
+      });
+
+      // Global click to close contextual menus
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#moreBtn')) closeMoreMenu();
+        if (!e.target.closest('#landingMoreBtn')) closeLandingMoreMenu();
+        if (!e.target.closest('#selectNetworkBtn') && !e.target.closest('#withdrawalNetworkDropdown')) {
+          el('withdrawalNetworkDropdown')?.classList.add('hidden');
         }
+      });
 
-        window.onload = initializeApp;
+      // Settings listeners (safe attach - element might not exist)
+      const notificationToggle = el('notificationToggle');
+      const notificationsPageToggle = el('notificationsPageToggle');
+      if (notificationToggle) {
+        notificationToggle.addEventListener('change', (ev) => {
+          const checked = !!ev.target.checked;
+          if (!window.appState) window.appState = window.appState || { settings: {} };
+          window.appState.settings = window.appState.settings || {};
+          window.appState.settings.notificationsOn = checked;
+          if (notificationsPageToggle) notificationsPageToggle.checked = checked;
+          safeCall(window.__appInternal.saveState);
+          showMessage(`Notifications turned ${checked ? 'ON' : 'OFF'}.`);
+        });
+      }
+      if (notificationsPageToggle) {
+        notificationsPageToggle.addEventListener('change', (ev) => {
+          const checked = !!ev.target.checked;
+          window.appState = window.appState || { settings: {} };
+          window.appState.settings = window.appState.settings || {};
+          window.appState.settings.notificationsOn = checked;
+          if (notificationToggle) notificationToggle.checked = checked;
+          safeCall(window.__appInternal.saveState);
+          showMessage(`Notifications turned ${checked ? 'ON' : 'OFF'}.`);
+        });
+      }
 
-    </script>
+      const strategySelect = el('strategySelect');
+      if (strategySelect) {
+        strategySelect.addEventListener('change', (ev) => {
+          window.appState = window.appState || { settings: {} };
+          window.appState.settings = window.appState.settings || {};
+          window.appState.settings.strategy = ev.target.value;
+          safeCall(window.__appInternal.saveState);
+          showMessage(`AI strategy set to ${ev.target.value}.`);
+        });
+      }
+
+      // Initial data load and view setup
+      safeCall(window.__appInternal.fetchMarketData);
+
+      // Determine initial page
+      const initialPage = (window.appState && window.appState.isLoggedIn) ? (window.appState.currentPage || 'home') : 'landingPage';
+      safeCall(window.__appInternal.showPage, initialPage, true);
+
+      // Start timers/periodic tasks if logged in
+      if (window.appState && window.appState.isLoggedIn) {
+        if (window.appState.trade && window.appState.trade.active) safeCall(window.__appInternal.startTradeCountdown);
+        if (window.appState.withdrawal && window.appState.withdrawal.status === 'Processing') safeCall(window.__appInternal.startWithdrawalCountdown);
+        safeCall(window.__appInternal.checkWithdrawalSuspension);
+      }
+
+      // Load charts if logged in and relevant page
+      if (window.appState && window.appState.isLoggedIn) {
+        if (['home', 'tradePage', 'earningsPage'].includes(initialPage)) {
+          safeCall(window.__appInternal.initializeTradingViewChart, 'tvchart', window.TRADINGVIEW_SYMBOL);
+          safeCall(window.__appInternal.initializeTradingViewChart, 'tradeLiveChart', window.appState.trade?.asset);
+          safeCall(window.__appInternal.initializeTradingViewChart, 'earningsLiveChart', window.appState.trade?.asset);
+        }
+      }
+
+      // Periodic background tasks
+      // Keep references so code that re-initializes can clear them if necessary.
+      window.__appTimers = window.__appTimers || {};
+      // UI refresh every 5s
+      if (!window.__appTimers.uiRefresh) {
+        window.__appTimers.uiRefresh = setInterval(() => {
+          if (window.appState && window.appState.isLoggedIn) safeCall(window.__appInternal.renderHomeUI);
+        }, 5000);
+      }
+      // Market data every 60s
+      if (!window.__appTimers.marketRefresh) {
+        window.__appTimers.marketRefresh = setInterval(safeCall.bind(null, window.__appInternal.fetchMarketData), 60000);
+      }
+      // Daily updates every 12 hours
+      if (!window.__appTimers.dailyUpdates) {
+        window.__appTimers.dailyUpdates = setInterval(safeCall.bind(null, window.__appInternal.loadDailyMarketUpdates), 12 * 60 * 60 * 1000);
+      }
+
+      // Initial call for daily updates (will check timestamps internally)
+      safeCall(window.__appInternal.loadDailyMarketUpdates);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('initializeApp error:', err);
+    }
+  }
+
+  // --- Expose functions to global scope for backward compatibility ---
+  Object.assign(window, {
+    setupPwa,
+    showInstallPromptUI,
+    handleInstallApp,
+    registerServiceWorker,
+    cacheAdditionalAssets,
+
+    initWeb3Modal,
+    connectWalletFlow,
+    connectWallet,
+    confirmWalletConnection,
+    manualConnect,
+    loginWithID,
+    disconnectAndLogout,
+    closeAccount,
+    getNetworkName,
+  });
+
+  // --- Auto-run PWA setup as soon as DOM is interactive; ensure idempotent ---
+  const runSetupPwaSoon = () => {
+    setTimeout(() => {
+      try { setupPwa(); } catch (e) { /* eslint-disable-next-line no-console */ console.warn('Auto setupPwa failed:', e); }
+    }, 600);
+  };
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    runSetupPwaSoon();
+  } else {
+    window.addEventListener('DOMContentLoaded', runSetupPwaSoon, { once: true });
+  }
+
+  // Attach initializeApp to load; use addEventListener so we don't override other handlers
+  window.addEventListener('load', initializeApp, { once: true });
+
+  // Also expose initializeApp so host app can re-run it if needed
+  window.initializeApp = initializeApp;
+})();
+ </script>
 </body>
 </html>
