@@ -356,44 +356,63 @@
   </section>
 
   <!-- ===== 2. ACTION BUTTONS (Deposit, Withdraw, Earn, Trade) ===== -->
-  <section class="grid grid-cols-4 text-center py-4 border-b border-gray-800">
-    <button onclick="showPage('depositCoinSelectPage')" class="flex flex-col items-center space-y-1">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24"
-        stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+  <section class="quick-actions-container" 
+     style="overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; scrollbar-width: none; margin-bottom: 28px;">
+  
+  <div class="quick-actions" 
+       style="display: inline-flex; gap: 12px; padding-bottom: 4px;">
+
+    <!-- Deposit -->
+    <button onclick="showPage('depositCoinSelectPage')" class="card"
+      style="min-width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 12px; padding: 16px; color: #fff; cursor: pointer; transition: 0.3s;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2" 
+           viewBox="0 0 24 24" width="22" height="22" style="margin-right: 8px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V6m0 0l-7 7m7-7l7 7"/>
       </svg>
-      <span class="text-xs font-semibold text-gray-300">Deposit</span>
+      <span style="font-weight: 600; font-size: 14px;">Deposit</span>
     </button>
 
-    <button onclick="showWithdrawalTypeSheet()" class="flex flex-col items-center space-y-1">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24"
-        stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 12m4-4v12" />
+    <!-- Withdraw -->
+    <button onclick="showWithdrawalTypeSheet()" class="card"
+      style="min-width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 12px; padding: 16px; color: #fff; cursor: pointer; transition: 0.3s;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2" 
+           viewBox="0 0 24 24" width="22" height="22" style="margin-right: 8px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v13m0 0l7-7m-7 7l-7-7"/>
       </svg>
-      <span class="text-xs font-semibold text-gray-300">Withdraw</span>
+      <span style="font-weight: 600; font-size: 14px;">Withdraw</span>
     </button>
 
-    <button onclick="showPage('earnPage')" class="flex flex-col items-center space-y-1">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24"
-        stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M12 8c1.657 0 3 1.343 3 3 0 1.933-3 6-3 6s-3-4.067-3-6c0-1.657 1.343-3 3-3z" />
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M12 2v2m0 16v2m10-10h-2M4 12H2" />
+    <!-- Transfer -->
+    <button onclick="showtradeDepositTransferSheet()" class="card"
+      style="min-width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 12px; padding: 16px; color: #fff; cursor: pointer; transition: 0.3s;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2" 
+           viewBox="0 0 24 24" width="22" height="22" style="margin-right: 8px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3"/>
       </svg>
-      <span class="text-xs font-semibold text-gray-300">Earn</span>
+      <span style="font-weight: 600; font-size: 14px;">Transfer</span>
     </button>
 
-    <button onclick="showPage('tradePage')" class="flex flex-col items-center space-y-1">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24"
-        stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    <!-- Auto-Trade -->
+    <button onclick="showPage('tradePage')" class="card"
+      style="min-width: 140px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #1a1a1a; border: 1px solid #2b2b2b; border-radius: 12px; padding: 16px; color: #fff; cursor: pointer; transition: 0.3s;">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#f3ba2f" stroke-width="2" 
+           viewBox="0 0 24 24" width="22" height="22" style="margin-right: 8px;">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M11 3v18M7 7l4-4 4 4M13 21l4-4-4-4"/>
       </svg>
-      <span class="text-xs font-semibold text-gray-300">Trade</span>
+      <span style="font-weight: 600; font-size: 14px;">Auto-Trade</span>
     </button>
+  </div>
+      
+<!-- Hide Scrollbar for Webkit Browsers -->
+<style>
+.quick-actions-container::-webkit-scrollbar {
+  display: none;
+}
+.card:hover {
+  background: #2b2b2b;
+  transform: translateY(-2px);
+}
+</style>
   </section>
 
 <!-- ===== 5. TRENDING COINS / LIVE CHART ===== -->
