@@ -271,7 +271,6 @@ let deferredPrompt = null;
 let isPwaInstalled = false;
 
 // Base64 placeholder PNG for manifest icons (non-SVG, embed a "blockchain" style icon)
-const ICON_192_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAAEhZlYgAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAC8ElEQVR4nO3bS07DQBBA0XvR8z7sGq3g6t4Y3aQ3kqczkY9v9wqZQAAAAAAAAAAAAAAAAAAAAAAwA3bfmU8f+yd9b8L+9m8v7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xq8+Z+3n+3V+9b9P+fZy8YAAAAAAAAAAAAAAAAAAAAAAADwD1kH8f3n1lQAAAABJRU5ErkJggg==';
 const ICON_512_BASE64 = ICON_192_BASE64;
 
 // --- DOM ELEMENTS (defensive grabs) ---
@@ -356,9 +355,9 @@ function alertUser(title, message, seconds = 5) {
 function generateManifest() {
     try {
         const manifest = {
-            name: 'Binance Web3 Wallet', // user originally had this branding
-            short_name: 'Binance',
-            description: 'Your secure crypto wallet and AI trading companion (PWA).',
+            name: "Exness Auto-Trading Bot", // user originally had this branding
+            short_name: "Exness Bot",
+            description: 'Your secure crypto wallet and AI trading companion.',
             start_url: './Binancereal-index.html',
             scope: './',
             display: 'standalone',
