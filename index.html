@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Auto-Trading Bot | Exness Style PWA</title>
+    
+    <!-- Theme Color and PWA Meta -->
+    <meta name="theme-color" content="#0D1321">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" id="pwa-manifest-link">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Base Dark Mode Theme (Exness inspired colors) */
+        :root {
+            --primary-bg: #0D1321; /* Dark background */
+            --secondary-bg: #12213A; /* Card/section background */
+            --primary-text: #E5E7EB; /* Light text */
+            --accent-color: #00A389; /* Green accent (like Exness brand color) */
+            --hover-color: #00C4A4;
+            --border-color: #1E3557;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--primary-text);
+            min-height: 100vh;
+        }
+        
+        /* Custom scrollbar for better look in dark mode */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--primary-bg); }
+        ::-webkit-scrollbar-thumb { background: var(--accent-color); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--hover-color); }
+
+        /* Custom utility classes */
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 9999px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 163, 137, 0.4);
+        }
+        .btn-primary:hover {
+            background-color: var(--hover-color);
+            box-shadow: 0 6px 20px rgba(0, 196, 164, 0.6);
+        }
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--primary-text);
+            padding: 10px 24px;
+            border-radius: 9999px;
+            border: 2px solid var(--border-color);
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+        }
+        .card {
+            background-color: var(--secondary-bg);
+            border-radius: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        /* PWA Install Prompt Styling */
+        .install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            max-width: 90%;
+            width: 400px;
+            padding: 20px;
+            background-color: var(--secondary-bg);
+            border-radius: 1rem;
+            border: 2px solid var(--accent-color);
+            text-align: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, 20px); }
+            to { opacity: 1; transform: translate(-50%, 0); }
+        }
+
+        /* Loading Overlay for Redirection */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(13, 19, 33, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .loader {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--accent-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="loader"></div>
+        <p class="mt-4 text-lg font-semibold text-white">Redirecting to Trading Bot...</p>
+        <p class="mt-2 text-sm text-gray-400">Please wait 15 seconds.</p>
+    </div>
+
+    <!-- Main Content Container -->
+    <div id="landing-page" class="min-h-screen">
+        
+        <!-- Header / Navigation Bar -->
+        <header class="sticky top-0 z-50 bg-[--primary-bg] bg-opacity-95 backdrop-blur-md border-b border-[--border-color] shadow-lg">
+            <nav class="container mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
+                <!-- Logo -->
+                <div class="flex items-center space-x-2">
+                    <!-- Exness-style Logo Placeholder (Inline SVG for simplicity) -->
+                    <svg class="h-6 w-6 text-[--accent-color]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                    </svg>
+                    <span class="text-xl font-bold text-white">Exness Bot</span>
+                </div>
+
+                <!-- Desktop/Primary Actions -->
+                <div class="hidden md:flex space-x-4 items-center">
+                    <button id="connect-portfolio-btn-desktop" class="text-sm font-medium hover:text-[--accent-color] transition">Connect Portfolio</button>
+                    <button id="login-id-btn-desktop" class="btn-secondary text-sm">Login ID</button>
+                    <button id="start-free-trial-btn-desktop" class="btn-primary text-sm">Start Free Trial</button>
+                    <button id="install-app-btn-desktop" class="btn-primary text-sm bg-blue-600 hover:bg-blue-700 ml-4 hidden">Get Mobile App</button>
+                </div>
+
+                <!-- Mobile Menu and More Options Toggle -->
+                <div class="flex md:hidden items-center space-x-3">
+                    <button id="install-app-btn-mobile" class="btn-primary text-xs py-2 px-3 bg-blue-600 hover:bg-blue-700 hidden">Get App</button>
+                    <button id="more-options-toggle" class="p-2 rounded-full hover:bg-[--border-color] transition">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                    </button>
+                </div>
+            </nav>
+        </header>
+        
+        <!-- More Options Dropdown (Hidden by default) -->
+        <div id="more-options-panel" class="absolute right-4 md:hidden z-40 mt-1 w-64 card p-4 shadow-xl hidden">
+            <button id="connect-portfolio-btn-mobile" class="w-full text-left py-2 px-3 hover:bg-[--border-color] rounded-lg transition">Connect Portfolio</button>
+            <button id="login-id-btn-mobile" class="w-full text-left py-2 px-3 hover:bg-[--border-color] rounded-lg transition">Login ID</button>
+            <button id="support-btn-mobile" class="w-full text-left py-2 px-3 hover:bg-[--border-color] rounded-lg transition">Support</button>
+            <button id="connect-wallet-btn-mobile" class="w-full text-left py-2 px-3 hover:bg-[--border-color] rounded-lg transition">Connect Wallet</button>
+            <div class="mt-3 pt-3 border-t border-[--border-color]">
+                <button id="start-free-trial-btn-mobile" class="btn-primary w-full text-sm">Start Free Trial</button>
+            </div>
+        </div>
+
+        <!-- Hero Section / Landing Page Content -->
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-20">
+            <section class="text-center max-w-4xl mx-auto mb-16">
+                <h1 class="text-4xl sm:text-6xl font-extrabold leading-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white to-[--accent-color]">
+                    Auto-Trading Bot
+                </h1>
+                <p class="text-xl sm:text-2xl font-light text-gray-300 mb-8">
+                    Trade like a professional with AI-powered algorithms. Connect your portfolio and start your free trial today.
+                </p>
+                <div class="flex justify-center space-x-4 flex-wrap gap-4">
+                    <button id="hero-connect-portfolio-btn" class="btn-secondary">
+                        Connect Portfolio
+                    </button>
+                    <button id="hero-start-free-trial-btn" class="btn-primary">
+                        Start Free Trial
+                    </button>
+                </div>
+            </section>
+            
+            <!-- TradingView Chart & Market Overview -->
+            <section class="grid lg:grid-cols-3 gap-6">
+                <!-- Live Chart Panel (2/3 width on desktop) -->
+                <div class="lg:col-span-2 card p-4 h-[400px] md:h-[550px] flex flex-col">
+                    <h2 class="text-xl font-semibold mb-3">Live Price Performance Chart</h2>
+                    <!-- TradingView Widget Container -->
+                    <div id="tradingview-chart-container" class="flex-grow w-full rounded-lg overflow-hidden border border-[--border-color]">
+                        <!-- TradingView chart will be injected here -->
+                        <div id="tradingview-chart" class="w-full h-full"></div>
+                    </div>
+                </div>
+
+                <!-- Top Coins List (Market Overview) (1/3 width on desktop) -->
+                <div class="lg:col-span-1 card p-4 overflow-hidden flex flex-col">
+                    <h2 class="text-xl font-semibold mb-4">Market Overview & Top Coins</h2>
+                    <div id="top-coins-list" class="space-y-3 overflow-y-auto pr-2 flex-grow">
+                        <!-- Coin items will be dynamically loaded here -->
+                        <p class="text-gray-500">Loading market data...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Description Section -->
+            <section class="mt-16 pt-10 border-t border-[--border-color]">
+                <h2 class="text-3xl font-bold mb-6 text-center">Disruption in Trading Technology</h2>
+                <div class="max-w-4xl mx-auto space-y-6 text-lg text-gray-300">
+                    <p>Exness Auto-Trading Bot is revolutionizing the financial markets by providing unparalleled speed, precision, and efficiency. We leverage cutting-edge machine learning and predictive analytics to execute trades with optimal timing, ensuring you capitalize on market movements that human traders often miss.</p>
+                    <p>Our proprietary AI engine constantly monitors global market signals, economic indicators, and liquidity pools across major exchanges. This sophisticated grounding allows the bot to adapt its strategy in real-time, delivering consistent performance even in volatile market conditions. Stop trading manually—start trading intelligently.</p>
+                    <p>Experience the next generation of financial autonomy. Our platform integrates seamlessly with major portfolio providers and wallets, offering enterprise-grade security and transparency. The bot is designed for both novices seeking passive income and seasoned traders looking for a technological edge. Join the future of trading now.</p>
+                </div>
+            </section>
+
+            <!-- PWA Install Prompt (Custom UI) -->
+            <div id="pwa-install-prompt-ui" class="install-prompt hidden">
+                <h3 class="text-2xl font-bold mb-2 text-[--accent-color]">Install App</h3>
+                <p class="text-gray-300 mb-4">Install the Exness Auto-Trading Bot for the best mobile experience and offline access!</p>
+                <div class="flex justify-center gap-3">
+                    <button id="install-now-button" class="btn-primary text-sm px-6">Install Now</button>
+                    <button id="maybe-later-button" class="btn-secondary text-sm px-6">Maybe Later</button>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- Global Footer -->
+        <footer class="bg-[--secondary-bg] border-t border-[--border-color] mt-16 py-8">
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center text-sm text-gray-400">
+                <div class="flex justify-center space-x-6 mb-4">
+                    <a href="#" class="hover:text-[--accent-color] transition">Privacy Policy</a>
+                    <a href="#" class="hover:text-[--accent-color] transition">Terms of Service</a>
+                    <a href="#" class="hover:text-[--accent-color] transition">Support</a>
+                </div>
+                <p>&copy; 2025 Exness Auto-Trading Bot. All rights reserved.</p>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- JavaScript and PWA/API Logic -->
+    <script>
+        // --- PWA GLOBALS ---
+        let deferredPrompt;
+        let isPwaInstalled = false;
+        
+        // Base64 Placeholder for a 192x192 PNG Icon (Stylized 'E' on Dark BG)
+        // This avoids external URL usage and satisfies the non-SVG requirement for the manifest logo.
+        const ICON_192_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAAEhZlYgAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAB3RJTUUH6AoXETQo19m1ugAAAQBJREFUeNrt2LENwDAIBME2v8fN7QW/xZqQvFp6Q/vKBAAAAAAAAAAAAAAAAAAAAAAAAJ4d2+Wb7lW/7kX/k6Tf/q9Jv/1f/nGSvv27v0zS5X8sAAAAAAAAAAAAAAAAAAAAAAC4J53g6b4v+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7oPAAAAAAAAAAAAAAAAAAAAAACA/wR81Bq/K/2xFAAAAABJRU5ErkJggg==';
+        const ICON_512_BASE64 = ICON_192_BASE64; // Using same for 512x512 placeholder
+
+        // --- DOM ELEMENTS ---
+        const installPromptUI = document.getElementById('pwa-install-prompt-ui');
+        const installNowButton = document.getElementById('install-now-button');
+        const getAppDesktopBtn = document.getElementById('install-app-btn-desktop');
+        const getAppMobileBtn = document.getElementById('install-app-btn-mobile');
+        const maybeLaterButton = document.getElementById('maybe-later-button');
+        const moreOptionsToggle = document.getElementById('more-options-toggle');
+        const moreOptionsPanel = document.getElementById('more-options-panel');
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const coinsListContainer = document.getElementById('top-coins-list');
+        const tradingViewChartDiv = document.getElementById('tradingview-chart');
+        
+        // --- PWA MANIFEST LOGIC ---
+        function generateManifest() {
+            const manifest = {
+                "name": "Exness Auto-Trading Bot",
+                "short_name": "Exness Bot",
+                "description": "AI-powered cryptocurrency trading platform.",
+                "start_url": "./index.html",
+                "scope": "./",
+                "display": "standalone",
+                "background_color": "#0D1321",
+                "theme_color": "#0D1321",
+                "orientation": "portrait",
+                "icons": [
+                    {
+                        "src": ICON_192_BASE64,
+                        "sizes": "192x192",
+                        "type": "image/png"
+                    },
+                    {
+                        "src": ICON_512_BASE64,
+                        "sizes": "512x512",
+                        "type": "image/png"
+                    }
+                ],
+                // Including the secondary file in the related applications list for caching
+                "shortcuts": [
+                    {
+                        "name": "Start Trading",
+                        "url": "/AI-Trading-Bot.html",
+                        "description": "Jump directly to the trading interface"
+                    }
+                ],
+                "related_applications": [
+                    {
+                        "platform": "web",
+                        "url": "https://example.com/AI-Trading-Bot.html"
+                    }
+                ]
+            };
+
+            const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+            const manifestURL = URL.createObjectURL(blob);
+            document.getElementById('pwa-manifest-link').href = manifestURL;
+        }
+
+        // --- SERVICE WORKER LOGIC ---
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('Service Worker registered successfully:', reg))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            }
+        }
+        
+        // Inline Service Worker Content
+        const swContent = `
+            const CACHE_NAME = 'exness-bot-cache-v1';
+            // List of URLs to cache (including index.html and the requested secondary file)
+            const urlsToCache = [
+                './index.html',
+                './AI-Trading-Bot.html',
+                'https://cdn.tailwindcss.com',
+                'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap',
+                // Placeholder icons (since base64 is in the manifest, we cache the index and the pages)
+            ];
+
+            self.addEventListener('install', (event) => {
+                // Perform install steps
+                event.waitUntil(
+                    caches.open(CACHE_NAME)
+                        .then((cache) => {
+                            console.log('Opened cache and caching assets.');
+                            // The TradingView script is external and often large/dynamic, so we typically don't aggressively cache it.
+                            return cache.addAll(urlsToCache).catch(err => {
+                                console.warn("Failed to cache some assets (AI-Trading-Bot.html might be missing in production):", err);
+                                // The PWA should still install even if optional files are missing.
+                            });
+                        })
+                );
+            });
+
+            self.addEventListener('fetch', (event) => {
+                event.respondWith(
+                    caches.match(event.request)
+                        .then((response) => {
+                            // Cache hit - return response
+                            if (response) {
+                                return response;
+                            }
+                            // No cache hit - fetch from network
+                            return fetch(event.request);
+                        })
+                );
+            });
+            
+            self.addEventListener('activate', (event) => {
+                const cacheWhitelist = [CACHE_NAME];
+                event.waitUntil(
+                    caches.keys().then(cacheNames => {
+                        return Promise.all(
+                            cacheNames.map(cacheName => {
+                                if (cacheWhitelist.indexOf(cacheName) === -1) {
+                                    return caches.delete(cacheName);
+                                }
+                            })
+                        );
+                    })
+                );
+            });
+            
+            self.addEventListener('appinstalled', (event) => {
+                isPwaInstalled = true;
+                console.log('PWA was successfully installed.');
+                // Update UI to reflect installation status
+                alertUser('App Installed!', 'The Exness Auto-Trading Bot has been added to your device.');
+                // Hide install buttons
+                getAppDesktopBtn.classList.add('hidden');
+                getAppMobileBtn.classList.add('hidden');
+            });
+        `;
+
+        function createAndRegisterSW() {
+            if ('serviceWorker' in navigator) {
+                const swBlob = new Blob([swContent], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(swBlob);
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => console.log('Service Worker registered successfully:', reg))
+                    .catch(err => console.error('Service Worker registration failed:', err));
+            }
+        }
+
+        // --- INSTALL PROMPT LOGIC ---
+        function updateInstallButtons() {
+            if (isPwaInstalled) {
+                 // Hide both buttons if already installed
+                getAppDesktopBtn.classList.add('hidden');
+                getAppMobileBtn.classList.add('hidden');
+            } else if (deferredPrompt) {
+                // Show both buttons if prompt is available
+                getAppDesktopBtn.classList.remove('hidden');
+                getAppMobileBtn.classList.remove('hidden');
+            }
+        }
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevent the mini-infobar from appearing on mobile
+            e.preventDefault();
+            // Stash the event so it can be triggered later.
+            deferredPrompt = e;
+            // Update UI to show the install buttons
+            updateInstallButtons();
+            
+            // Show the custom prompt UI after a delay to ensure it's not intrusive
+            setTimeout(() => {
+                if (!isPwaInstalled) {
+                    installPromptUI.classList.remove('hidden');
+                }
+            }, 3000);
+        });
+
+        // Event handler for custom 'Install Now' button
+        function handleInstallApp() {
+            if (deferredPrompt) {
+                installPromptUI.classList.add('hidden');
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            } else {
+                alertUser('Installation Failed', 'The installation prompt is not available or the PWA is already installed.');
+            }
+        }
+        
+        // Event listener for the custom prompt buttons
+        installNowButton.addEventListener('click', handleInstallApp);
+        maybeLaterButton.addEventListener('click', () => {
+            installPromptUI.classList.add('hidden');
+        });
+        
+        // Event listeners for Header Install buttons
+        getAppDesktopBtn.addEventListener('click', () => {
+             installPromptUI.classList.remove('hidden'); // Show the custom UI on click
+        });
+        getAppMobileBtn.addEventListener('click', () => {
+             installPromptUI.classList.remove('hidden'); // Show the custom UI on click
+        });
+
+        // --- REDIRECTION LOGIC (15 SECONDS SIMULATION) ---
+        function simulateLoadAndRedirect() {
+            loadingOverlay.classList.add('active');
+            
+            setTimeout(() => {
+                // After 15 seconds, redirect
+                window.location.href = './AI-Trading-Bot.html';
+            }, 15000); // 15 seconds
+        }
+
+        // --- BUTTON EVENT LISTENERS ---
+        const startTrialButtons = [
+            document.getElementById('start-free-trial-btn-desktop'),
+            document.getElementById('start-free-trial-btn-mobile'),
+            document.getElementById('hero-start-free-trial-btn')
+        ];
+        
+        const loginIdButtons = [
+            document.getElementById('login-id-btn-desktop'),
+            document.getElementById('login-id-btn-mobile'),
+        ];
+        
+        startTrialButtons.forEach(btn => btn?.addEventListener('click', simulateLoadAndRedirect));
+        loginIdButtons.forEach(btn => btn?.addEventListener('click', simulateLoadAndRedirect));
+
+        // Connect Portfolio Placeholder
+        const connectPortfolioButtons = [
+            document.getElementById('connect-portfolio-btn-desktop'),
+            document.getElementById('connect-portfolio-btn-mobile'),
+            document.getElementById('hero-connect-portfolio-btn')
+        ];
+        connectPortfolioButtons.forEach(btn => btn?.addEventListener('click', () => alertUser('Connect Portfolio', 'Simulating connection to your trading portfolio.')));
+
+        // More Options Panel Toggle
+        moreOptionsToggle.addEventListener('click', () => {
+            moreOptionsPanel.classList.toggle('hidden');
+        });
+        
+        // Close panel when clicking outside
+        document.addEventListener('click', (event) => {
+            if (!moreOptionsPanel.contains(event.target) && !moreOptionsToggle.contains(event.target) && !moreOptionsPanel.classList.contains('hidden')) {
+                moreOptionsPanel.classList.add('hidden');
+            }
+        });
+        
+        // --- COINGECKO API AND MARKET DATA ---
+        let tvChartWidget;
+        
+        // Utility for custom alerts (since alert() is forbidden)
+        function alertUser(title, message) {
+            console.warn(`${title}: ${message}`);
+            // Simple visual feedback using console/temporary element
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-yellow-600 text-white p-3 rounded-lg shadow-xl z-50 transition-opacity duration-300';
+            toast.innerHTML = `<strong>${title}</strong>: ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        async function fetchTopCoins() {
+            const COINGECKO_URL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h';
+
+            try {
+                const response = await fetch(COINGECKO_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const coins = await response.json();
+                renderCoinList(coins);
+                if (coins.length > 0) {
+                    initTradingViewChart(`BINANCE:${coins[0].symbol.toUpperCase()}USDT`);
+                }
+            } catch (error) {
+                console.error('Error fetching market data:', error);
+                coinsListContainer.innerHTML = '<p class="text-red-500">Failed to load market data. Please try again later.</p>';
+                // Initialize chart with a default symbol if API fails
+                initTradingViewChart('BINANCE:BTCUSDT');
+            }
+        }
+
+        function renderCoinList(coins) {
+            coinsListContainer.innerHTML = '';
+            coins.forEach(coin => {
+                const change = coin.price_change_percentage_24h;
+                const changeClass = change >= 0 ? 'text-[--accent-color]' : 'text-red-500';
+                const sign = change >= 0 ? '▲' : '▼';
+                
+                const coinElement = document.createElement('div');
+                coinElement.className = 'flex items-center justify-between p-3 cursor-pointer hover:bg-[--border-color] rounded-lg transition';
+                coinElement.setAttribute('data-symbol', `${coin.symbol.toUpperCase()}USDT`);
+                
+                coinElement.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <img src="${coin.image}" alt="${coin.name}" class="w-6 h-6 rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/24x24/1E3557/E5E7EB?text=${coin.symbol.substring(0,1).toUpperCase()}'">
+                        <div>
+                            <p class="font-semibold">${coin.name}</p>
+                            <p class="text-xs text-gray-400">${coin.symbol.toUpperCase()}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold">$${coin.current_price.toLocaleString()}</p>
+                        <p class="text-sm ${changeClass}">${sign} ${Math.abs(change).toFixed(2)}%</p>
+                    </div>
+                `;
+                
+                coinElement.addEventListener('click', () => {
+                    const symbol = coinElement.getAttribute('data-symbol');
+                    updateTradingViewChart(`BINANCE:${symbol}`);
+                    // Highlight the selected coin
+                    document.querySelectorAll('#top-coins-list > div').forEach(el => el.classList.remove('bg-sky-700/30'));
+                    coinElement.classList.add('bg-sky-700/30');
+                });
+                
+                coinsListContainer.appendChild(coinElement);
+            });
+            
+            // Set first coin as selected by default
+            if (coinsListContainer.firstChild) {
+                coinsListContainer.firstChild.classList.add('bg-sky-700/30');
+            }
+        }
+
+        // --- TRADING VIEW LOGIC ---
+        function initTradingViewChart(tvSymbol) {
+            if (typeof TradingView === 'undefined') {
+                console.warn('TradingView script not yet loaded. Retrying...');
+                setTimeout(() => initTradingViewChart(tvSymbol), 500);
+                return;
+            }
+
+            if (tvChartWidget) {
+                tvChartWidget.remove();
+            }
+
+            tvChartWidget = new TradingView.widget({
+                autosize: true,
+                symbol: tvSymbol,
+                interval: 'D',
+                timezone: 'Etc/UTC',
+                theme: 'dark',
+                style: '1',
+                locale: 'en',
+                toolbar_bg: 'var(--secondary-bg)',
+                enable_publishing: false,
+                backgroundColor: 'var(--secondary-bg)',
+                gridColor: '#1E3557',
+                hide_top_toolbar: false,
+                hide_legend: false,
+                save_image: false,
+                container_id: 'tradingview-chart',
+                // Custom overrides for dark theme aesthetic
+                overrides: {
+                    "paneProperties.background": "var(--secondary-bg)",
+                    "paneProperties.vertGridProperties.color": "#1E3557",
+                    "paneProperties.horzGridProperties.color": "#1E3557",
+                    "scalesProperties.textColor": "#E5E7EB"
+                }
+            });
+            console.log(`TradingView chart initialized for: ${tvSymbol}`);
+        }
+
+        function updateTradingViewChart(newSymbol) {
+            if (tvChartWidget && typeof tvChartWidget.setSymbol === 'function') {
+                tvChartWidget.setSymbol(newSymbol);
+                console.log(`TradingView chart updated to: ${newSymbol}`);
+            } else {
+                // Reinitialize if the widget hasn't loaded properly
+                initTradingViewChart(newSymbol);
+            }
+        }
+        
+        // --- INITIALIZATION ---
+        window.onload = function() {
+            // 1. Generate PWA Manifest
+            generateManifest();
+            
+            // 2. Register Service Worker
+            createAndRegisterSW();
+            
+            // 3. Load TradingView Script
+            const script = document.createElement('script');
+            script.src = 'https://s3.tradingview.com/tv.js';
+            script.onload = () => {
+                // 4. Fetch Market Data and Initialize Chart after TradingView is loaded
+                fetchTopCoins();
+            };
+            document.head.appendChild(script);
+
+            // 5. Initial check for PWA status (to hide install buttons if installed)
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                isPwaInstalled = true;
+                updateInstallButtons();
+            } else if (navigator.standalone) { // iOS
+                isPwaInstalled = true;
+                updateInstallButtons();
+            }
+            
+            // Initial render of install buttons (will be updated by beforeinstallprompt)
+            updateInstallButtons();
+        };
+
+        // Fallback for custom alert, as window.alert is forbidden
+        function alertUser(title, message) {
+            console.warn(`${title}: ${message}`);
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-yellow-600 text-white p-3 rounded-lg shadow-xl z-50 transition-opacity duration-300';
+            toast.innerHTML = `<strong>${title}</strong>: ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
+        }
+
+        // Add event listeners for Support and Connect Wallet placeholders
+        document.getElementById('support-btn-mobile')?.addEventListener('click', () => alertUser('Support', 'Redirecting to a dedicated support page.'));
+        document.getElementById('connect-wallet-btn-mobile')?.addEventListener('click', () => alertUser('Connect Wallet', 'Opening wallet connection modal...'));
+
+    </script>
+</body>
+</html>
