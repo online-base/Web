@@ -638,103 +638,133 @@ if (moreOptionsToggle && moreOptionsPanel) {
         }
     });
 }
-
-// --- COINGECKO API & TRADINGVIEW (minimal handling) ---
-let tvChartWidget = null;
-
-async function fetchTopCoins() {
-    if (!coinsListContainer) return;
-    const COINGECKO_URL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h';
-    try {
-        const response = await fetch(COINGECKO_URL);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const coins = await response.json();
-        renderCoinList(coins);
-        if (coins.length > 0) {
-            initTradingViewChart(`BINANCE:${coins[0].symbol.toUpperCase()}USDT`);
-        }
-    } catch (err) {
-        console.error('Error fetching market data:', err);
-        coinsListContainer.innerHTML = '<p style="color:#f87171">Failed to load market data. Please try again later.</p>';
-        initTradingViewChart('BINANCE:BTCUSDT');
-    }
-}
-
-function renderCoinList(coins) {
-    if (!coinsListContainer) return;
-    coinsListContainer.innerHTML = '';
-    coins.forEach(coin => {
-        const change = coin.price_change_percentage_24h ?? 0;
-        const changeColor = change >= 0 ? '#10B981' : '#EF4444';
-        const sign = change >= 0 ? '▲' : '▼';
-        const wrapper = document.createElement('div');
-        wrapper.style = 'display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;cursor:pointer';
-        wrapper.setAttribute('data-symbol', `${coin.symbol.toUpperCase()}USDT`);
-        wrapper.innerHTML = `
-            <div style="display:flex;align-items:center;gap:10px">
-                <img src="${coin.image}" alt="${coin.name}" style="width:28px;height:28px;border-radius:50%" onerror="this.onerror=null;this.src='https://placehold.co/28x28/FFD700/000?text=${coin.symbol.substring(0,1).toUpperCase()}'" />
-                <div>
-                    <div style="font-weight:600">${coin.name}</div>
-                    <div style="font-size:12px;color:#9CA3AF">${coin.symbol.toUpperCase()}</div>
-                </div>
-            </div>
-            <div style="text-align:right">
-                <div style="font-weight:700">$${Number(coin.current_price).toLocaleString()}</div>
-                <div style="font-size:12px;color:${changeColor}">${sign} ${Math.abs(change).toFixed(2)}%</div>
-            </div>
-        `;
-        wrapper.addEventListener('click', () => {
-            const sym = wrapper.getAttribute('data-symbol');
-            updateTradingViewChart(`BINANCE:${sym}`);
-            // highlight
-            coinsListContainer.querySelectorAll('div').forEach(d => d.style.background = '');
-            wrapper.style.background = 'rgba(72, 144, 255, 0.06)';
-        });
-        coinsListContainer.appendChild(wrapper);
-    });
-    if (coinsListContainer.firstChild) coinsListContainer.firstChild.style.background = 'rgba(72, 144, 255, 0.06)';
-}
-
-// --- TRADINGVIEW WIDGET INIT/UPDATE (defensive) ---
-function initTradingViewChart(tvSymbol) {
-    try {
-        if (typeof TradingView === 'undefined') {
-            console.warn('TradingView not yet loaded. Retrying...');
-            setTimeout(() => initTradingViewChart(tvSymbol), 600);
-            return;
+        
+        // --- COINGECKO API AND MARKET DATA ---
+        let tvChartWidget;
+        
+        // Utility for custom alerts (since alert() is forbidden)
+        function alertUser(title, message) {
+            console.warn(`${title}: ${message}`);
+            // Simple visual feedback using console/temporary element
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-4 right-4 bg-yellow-600 text-white p-3 rounded-lg shadow-xl z-50 transition-opacity duration-300';
+            toast.innerHTML = `<strong>${title}</strong>: ${message}`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 5000);
         }
 
-        if (!tradingViewChartDiv) return;
-        tradingViewChartDiv.innerHTML = '';
-        tvChartWidget = new TradingView.widget({
-            autosize: true,
-            symbol: tvSymbol,
-            interval: 'D',
-            timezone: 'Etc/UTC',
-            theme: 'dark',
-            style: '1',
-            locale: 'en',
-            container_id: tradingViewChartDiv.id,
-            studies: ["Volume@tv-basicstudies"]
-        });
-        console.log('TradingView initialized for', tvSymbol);
-    } catch (err) {
-        console.error('initTradingViewChart error:', err);
-    }
-}
+        async function fetchTopCoins() {
+            const COINGECKO_URL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h';
 
-function updateTradingViewChart(newSymbol) {
-    try {
-        if (tvChartWidget && typeof tvChartWidget.setSymbol === 'function') {
-            tvChartWidget.setSymbol(newSymbol);
-            console.log('TradingView chart updated to:', newSymbol);
-        } else {
-            initTradingViewChart(newSymbol);
+            try {
+                const response = await fetch(COINGECKO_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const coins = await response.json();
+                renderCoinList(coins);
+                if (coins.length > 0) {
+                    initTradingViewChart(`BINANCE:${coins[0].symbol.toUpperCase()}USDT`);
+                }
+            } catch (error) {
+                console.error('Error fetching market data:', error);
+                coinsListContainer.innerHTML = '<p class="text-red-500">Failed to load market data. Please try again later.</p>';
+                // Initialize chart with a default symbol if API fails
+                initTradingViewChart('BINANCE:BTCUSDT');
+            }
         }
-    } catch (err) {
-        console.error('updateTradingViewChart error:', err);
-    }
-}
+
+        function renderCoinList(coins) {
+            coinsListContainer.innerHTML = '';
+            coins.forEach(coin => {
+                const change = coin.price_change_percentage_24h;
+                const changeClass = change >= 0 ? 'text-[--accent-color]' : 'text-red-500';
+                const sign = change >= 0 ? '▲' : '▼';
+                
+                const coinElement = document.createElement('div');
+                coinElement.className = 'flex items-center justify-between p-3 cursor-pointer hover:bg-[--border-color] rounded-lg transition';
+                coinElement.setAttribute('data-symbol', `${coin.symbol.toUpperCase()}USDT`);
+                
+                coinElement.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <img src="${coin.image}" alt="${coin.name}" class="w-6 h-6 rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/24x24/1E3557/E5E7EB?text=${coin.symbol.substring(0,1).toUpperCase()}'">
+                        <div>
+                            <p class="font-semibold">${coin.name}</p>
+                            <p class="text-xs text-gray-400">${coin.symbol.toUpperCase()}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="font-bold">$${coin.current_price.toLocaleString()}</p>
+                        <p class="text-sm ${changeClass}">${sign} ${Math.abs(change).toFixed(2)}%</p>
+                    </div>
+                `;
+                
+                coinElement.addEventListener('click', () => {
+                    const symbol = coinElement.getAttribute('data-symbol');
+                    updateTradingViewChart(`BINANCE:${symbol}`);
+                    // Highlight the selected coin
+                    document.querySelectorAll('#top-coins-list > div').forEach(el => el.classList.remove('bg-sky-700/30'));
+                    coinElement.classList.add('bg-sky-700/30');
+                });
+                
+                coinsListContainer.appendChild(coinElement);
+            });
+            
+            // Set first coin as selected by default
+            if (coinsListContainer.firstChild) {
+                coinsListContainer.firstChild.classList.add('bg-sky-700/30');
+            }
+        }
+
+        // --- TRADING VIEW LOGIC ---
+        function initTradingViewChart(tvSymbol) {
+            if (typeof TradingView === 'undefined') {
+                console.warn('TradingView script not yet loaded. Retrying...');
+                setTimeout(() => initTradingViewChart(tvSymbol), 500);
+                return;
+            }
+
+            if (tvChartWidget) {
+                tvChartWidget.remove();
+            }
+
+            tvChartWidget = new TradingView.widget({
+                autosize: true,
+                symbol: tvSymbol,
+                interval: 'D',
+                timezone: 'Etc/UTC',
+                theme: 'dark',
+                style: '1',
+                locale: 'en',
+                toolbar_bg: 'var(--secondary-bg)',
+                enable_publishing: false,
+                backgroundColor: 'var(--secondary-bg)',
+                gridColor: '#1E3557',
+                hide_top_toolbar: false,
+                hide_legend: false,
+                save_image: false,
+                container_id: 'tradingview-chart',
+                // Custom overrides for dark theme aesthetic
+                overrides: {
+                    "paneProperties.background": "var(--secondary-bg)",
+                    "paneProperties.vertGridProperties.color": "#1E3557",
+                    "paneProperties.horzGridProperties.color": "#1E3557",
+                    "scalesProperties.textColor": "#E5E7EB"
+                }
+            });
+            console.log(`TradingView chart initialized for: ${tvSymbol}`);
+        }
+
+        function updateTradingViewChart(newSymbol) {
+            if (tvChartWidget && typeof tvChartWidget.setSymbol === 'function') {
+                tvChartWidget.setSymbol(newSymbol);
+                console.log(`TradingView chart updated to: ${newSymbol}`);
+            } else {
+                // Reinitialize if the widget hasn't loaded properly
+                initTradingViewChart(newSymbol);
+            }
+        }
 
 // --- INITIALIZATION (on load) ---
 window.addEventListener('load', () => {
