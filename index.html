@@ -261,438 +261,510 @@
 
     <!-- JavaScript and PWA/API Logic -->
     <script>
-        // --- PWA GLOBALS ---
-        let deferredPrompt;
-        let isPwaInstalled = false;
-        
-        // Base64 Placeholder for a 192x192 PNG Icon (Stylized 'E' on Dark BG)
-        // This avoids external URL usage and satisfies the non-SVG requirement for the manifest logo.
-        const ICON_192_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAAEhZlYgAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAA7DAAAOwwHHb6hkAAAAB3RJTUUH6AoXETQo19m1ugAAAQBJREFUeNrt2LENwDAIBME2v8fN7QW/xZqQvFp6Q/vKBAAAAAAAAAAAAAAAAAAAAAAAAJ4d2+Wb7lW/7kX/k6Tf/q9Jv/1f/nGSvv27v0zS5X8sAAAAAAAAAAAAAAAAAAAAAAC4J53g6b4v+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7ov+7oPAAAAAAAAAAAAAAAAAAAAAACA/wR81Bq/K/2xFAAAAABJRU5ErkJggg==';
-        const ICON_512_BASE64 = ICON_192_BASE64; // Using same for 512x512 placeholder
+                        // Full updated JavaScript: PWA install flow, service worker, 15s simulated loaders and redirects,
+// and button handlers for Connect Portfolio / Login ID / Start Free Trial.
+// NOTE: This script assumes the HTML contains elements with the IDs referenced below.
+// It is written to be defensive (checks for missing DOM nodes).
 
-        // --- DOM ELEMENTS ---
-        const installPromptUI = document.getElementById('pwa-install-prompt-ui');
-        const installNowButton = document.getElementById('install-now-button');
-        const getAppDesktopBtn = document.getElementById('install-app-btn-desktop');
-        const getAppMobileBtn = document.getElementById('install-app-btn-mobile');
-        const maybeLaterButton = document.getElementById('maybe-later-button');
-        const moreOptionsToggle = document.getElementById('more-options-toggle');
-        const moreOptionsPanel = document.getElementById('more-options-panel');
-        const loadingOverlay = document.getElementById('loading-overlay');
-        const coinsListContainer = document.getElementById('top-coins-list');
-        const tradingViewChartDiv = document.getElementById('tradingview-chart');
-        
-        // --- PWA MANIFEST LOGIC ---
-        function generateManifest() {
-            const manifest = {
-                "name": "Exness Auto-Trading Bot",
-                "short_name": "Exness Bot",
-                "description": "AI-powered cryptocurrency trading platform.",
-                "start_url": "./index.html",
-                "scope": "./",
-                "display": "standalone",
-                "background_color": "#0D1321",
-                "theme_color": "#0D1321",
-                "orientation": "portrait",
-                "icons": [
-                    {
-                        "src": ICON_192_BASE64,
-                        "sizes": "192x192",
-                        "type": "image/png"
-                    },
-                    {
-                        "src": ICON_512_BASE64,
-                        "sizes": "512x512",
-                        "type": "image/png"
-                    }
-                ],
-                // Including the secondary file in the related applications list for caching
-                "shortcuts": [
-                    {
-                        "name": "Start Trading",
-                        "url": "/AI-Trading-Bot.html",
-                        "description": "Jump directly to the trading interface"
-                    }
-                ],
-                "related_applications": [
-                    {
-                        "platform": "web",
-                        "url": "https://example.com/AI-Trading-Bot.html"
-                    }
-                ]
-            };
+// --- PWA GLOBALS ---
+let deferredPrompt = null;
+let isPwaInstalled = false;
 
-            const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-            const manifestURL = URL.createObjectURL(blob);
-            document.getElementById('pwa-manifest-link').href = manifestURL;
-        }
+// Base64 placeholder PNG for manifest icons (non-SVG, embed a "blockchain" style icon)
+const ICON_192_BASE64 = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAAEhZlYgAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAC8ElEQVR4nO3bS07DQBBA0XvR8z7sGq3g6t4Y3aQ3kqczkY9v9wqZQAAAAAAAAAAAAAAAAAAAAAAwA3bfmU8f+yd9b8L+9m8v7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xl9vL7vXc3P3m3G7Xq8+Z+3n+3V+9b9P+fZy8YAAAAAAAAAAAAAAAAAAAAAAADwD1kH8f3n1lQAAAABJRU5ErkJggg==';
+const ICON_512_BASE64 = ICON_192_BASE64;
 
-        // --- SERVICE WORKER LOGIC ---
-        function registerServiceWorker() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./service-worker.js')
-                    .then(reg => console.log('Service Worker registered successfully:', reg))
-                    .catch(err => console.error('Service Worker registration failed:', err));
-            }
-        }
-        
-        // Inline Service Worker Content
-        const swContent = `
-            const CACHE_NAME = 'exness-bot-cache-v1';
-            // List of URLs to cache (including index.html and the requested secondary file)
-            const urlsToCache = [
-                './index.html',
-                './AI-Trading-Bot.html',
-                'https://cdn.tailwindcss.com',
-                'https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap',
-                // Placeholder icons (since base64 is in the manifest, we cache the index and the pages)
-            ];
+// --- DOM ELEMENTS (defensive grabs) ---
+const installPromptUI = document.getElementById('pwa-install-prompt-ui');
+const installNowButton = document.getElementById('install-now-button');
+const getAppDesktopBtn = document.getElementById('install-app-btn-desktop');
+const getAppMobileBtn = document.getElementById('install-app-btn-mobile');
+const maybeLaterButton = document.getElementById('maybe-later-button');
+const moreOptionsToggle = document.getElementById('more-options-toggle');
+const moreOptionsPanel = document.getElementById('more-options-panel');
+const loadingOverlay = document.getElementById('loading-overlay') || createLoadingOverlay();
+const coinsListContainer = document.getElementById('top-coins-list');
+const tradingViewChartDiv = document.getElementById('tradingview-chart');
 
-            self.addEventListener('install', (event) => {
-                // Perform install steps
-                event.waitUntil(
-                    caches.open(CACHE_NAME)
-                        .then((cache) => {
-                            console.log('Opened cache and caching assets.');
-                            // The TradingView script is external and often large/dynamic, so we typically don't aggressively cache it.
-                            return cache.addAll(urlsToCache).catch(err => {
-                                console.warn("Failed to cache some assets (AI-Trading-Bot.html might be missing in production):", err);
-                                // The PWA should still install even if optional files are missing.
-                            });
-                        })
-                );
-            });
+// Utility: ensure an overlay exists for loading feedback (creates one if not present)
+function createLoadingOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'loading-overlay';
+    overlay.style = `
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.7);
+        z-index: 99999;
+        color: #fff;
+        font-family: Inter, sans-serif;
+    `;
+    overlay.innerHTML = `
+        <div style="text-align:center; max-width:90%; padding:20px;">
+            <div id="loading-spinner" style="margin:auto;border:6px solid rgba(255,255,255,0.15);border-top:6px solid #FCD535;border-radius:50%;width:48px;height:48px;animation:spin 1s linear infinite"></div>
+            <div id="loading-message" style="margin-top:12px;font-size:16px;">Loading...</div>
+        </div>
+        <style>
+            @keyframes spin { from { transform: rotate(0deg);} to { transform: rotate(360deg);} }
+        </style>
+    `;
+    document.body.appendChild(overlay);
+    return overlay;
+}
 
-            self.addEventListener('fetch', (event) => {
-                event.respondWith(
-                    caches.match(event.request)
-                        .then((response) => {
-                            // Cache hit - return response
-                            if (response) {
-                                return response;
-                            }
-                            // No cache hit - fetch from network
-                            return fetch(event.request);
-                        })
-                );
-            });
-            
-            self.addEventListener('activate', (event) => {
-                const cacheWhitelist = [CACHE_NAME];
-                event.waitUntil(
-                    caches.keys().then(cacheNames => {
-                        return Promise.all(
-                            cacheNames.map(cacheName => {
-                                if (cacheWhitelist.indexOf(cacheName) === -1) {
-                                    return caches.delete(cacheName);
-                                }
-                            })
-                        );
-                    })
-                );
-            });
-            
-            self.addEventListener('appinstalled', (event) => {
-                isPwaInstalled = true;
-                console.log('PWA was successfully installed.');
-                // Update UI to reflect installation status
-                alertUser('App Installed!', 'The Exness Auto-Trading Bot has been added to your device.');
-                // Hide install buttons
-                getAppDesktopBtn.classList.add('hidden');
-                getAppMobileBtn.classList.add('hidden');
-            });
-        `;
+function showLoadingOverlay(message = 'Loading, please wait...') {
+    if (!loadingOverlay) return;
+    const msgEl = loadingOverlay.querySelector('#loading-message');
+    if (msgEl) msgEl.textContent = message;
+    loadingOverlay.style.display = 'flex';
+}
 
-        function createAndRegisterSW() {
-            if ('serviceWorker' in navigator) {
-                const swBlob = new Blob([swContent], { type: 'application/javascript' });
-                const swUrl = URL.createObjectURL(swBlob);
-                navigator.serviceWorker.register(swUrl)
-                    .then(reg => console.log('Service Worker registered successfully:', reg))
-                    .catch(err => console.error('Service Worker registration failed:', err));
-            }
-        }
+function hideLoadingOverlay() {
+    if (!loadingOverlay) return;
+    loadingOverlay.style.display = 'none';
+}
 
-        // --- INSTALL PROMPT LOGIC ---
-        function updateInstallButtons() {
-            if (isPwaInstalled) {
-                 // Hide both buttons if already installed
-                getAppDesktopBtn.classList.add('hidden');
-                getAppMobileBtn.classList.add('hidden');
-            } else if (deferredPrompt) {
-                // Show both buttons if prompt is available
-                getAppDesktopBtn.classList.remove('hidden');
-                getAppMobileBtn.classList.remove('hidden');
-            }
-        }
+// --- SINGLE alertUser function (visual toast) ---
+function alertUser(title, message, seconds = 5) {
+    console.warn(`${title}: ${message}`);
+    const toast = document.createElement('div');
+    toast.className = 'pwa-toast';
+    toast.style = `
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        background: linear-gradient(90deg,#1F2937,#111827);
+        color: #fff;
+        padding: 12px 16px;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(2,6,23,0.6);
+        z-index: 100000;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    `;
+    toast.innerHTML = `<strong style="display:block;margin-bottom:6px">${title}</strong><div style="opacity:0.95">${message}</div>`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.transition = 'opacity .3s ease';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, seconds * 1000);
+}
 
-        window.addEventListener('beforeinstallprompt', (e) => {
-            // Prevent the mini-infobar from appearing on mobile
-            e.preventDefault();
-            // Stash the event so it can be triggered later.
-            deferredPrompt = e;
-            // Update UI to show the install buttons
-            updateInstallButtons();
-            
-            // Show the custom prompt UI after a delay to ensure it's not intrusive
-            setTimeout(() => {
-                if (!isPwaInstalled) {
-                    installPromptUI.classList.remove('hidden');
-                }
-            }, 3000);
-        });
-
-        // Event handler for custom 'Install Now' button
-        function handleInstallApp() {
-            if (deferredPrompt) {
-                installPromptUI.classList.add('hidden');
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the install prompt');
-                    } else {
-                        console.log('User dismissed the install prompt');
-                    }
-                    deferredPrompt = null;
-                });
-            } else {
-                alertUser('Installation Failed', 'The installation prompt is not available or the PWA is already installed.');
-            }
-        }
-        
-        // Event listener for the custom prompt buttons
-        installNowButton.addEventListener('click', handleInstallApp);
-        maybeLaterButton.addEventListener('click', () => {
-            installPromptUI.classList.add('hidden');
-        });
-        
-        // Event listeners for Header Install buttons
-        getAppDesktopBtn.addEventListener('click', () => {
-             installPromptUI.classList.remove('hidden'); // Show the custom UI on click
-        });
-        getAppMobileBtn.addEventListener('click', () => {
-             installPromptUI.classList.remove('hidden'); // Show the custom UI on click
-        });
-
-        // --- REDIRECTION LOGIC (15 SECONDS SIMULATION) ---
-        function simulateLoadAndRedirect() {
-            loadingOverlay.classList.add('active');
-            
-            setTimeout(() => {
-                // After 15 seconds, redirect
-                window.location.href = './AI-Trading-Bot.html';
-            }, 15000); // 15 seconds
-        }
-
-        // --- BUTTON EVENT LISTENERS ---
-        const startTrialButtons = [
-            document.getElementById('start-free-trial-btn-desktop'),
-            document.getElementById('start-free-trial-btn-mobile'),
-            document.getElementById('hero-start-free-trial-btn')
-        ];
-        
-        const loginIdButtons = [
-            document.getElementById('login-id-btn-desktop'),
-            document.getElementById('login-id-btn-mobile'),
-        ];
-        
-        startTrialButtons.forEach(btn => btn?.addEventListener('click', simulateLoadAndRedirect));
-        loginIdButtons.forEach(btn => btn?.addEventListener('click', simulateLoadAndRedirect));
-
-        // Connect Portfolio Placeholder
-        const connectPortfolioButtons = [
-            document.getElementById('connect-portfolio-btn-desktop'),
-            document.getElementById('connect-portfolio-btn-mobile'),
-            document.getElementById('hero-connect-portfolio-btn')
-        ];
-        connectPortfolioButtons.forEach(btn => btn?.addEventListener('click', () => alertUser('Connect Portfolio', 'Simulating connection to your trading portfolio.')));
-
-        // More Options Panel Toggle
-        moreOptionsToggle.addEventListener('click', () => {
-            moreOptionsPanel.classList.toggle('hidden');
-        });
-        
-        // Close panel when clicking outside
-        document.addEventListener('click', (event) => {
-            if (!moreOptionsPanel.contains(event.target) && !moreOptionsToggle.contains(event.target) && !moreOptionsPanel.classList.contains('hidden')) {
-                moreOptionsPanel.classList.add('hidden');
-            }
-        });
-        
-        // --- COINGECKO API AND MARKET DATA ---
-        let tvChartWidget;
-        
-        // Utility for custom alerts (since alert() is forbidden)
-        function alertUser(title, message) {
-            console.warn(`${title}: ${message}`);
-            // Simple visual feedback using console/temporary element
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 bg-yellow-600 text-white p-3 rounded-lg shadow-xl z-50 transition-opacity duration-300';
-            toast.innerHTML = `<strong>${title}</strong>: ${message}`;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
-        }
-
-        async function fetchTopCoins() {
-            const COINGECKO_URL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h';
-
-            try {
-                const response = await fetch(COINGECKO_URL);
-                if (!response.ok) throw new Error('Network response was not ok');
-                const coins = await response.json();
-                renderCoinList(coins);
-                if (coins.length > 0) {
-                    initTradingViewChart(`BINANCE:${coins[0].symbol.toUpperCase()}USDT`);
-                }
-            } catch (error) {
-                console.error('Error fetching market data:', error);
-                coinsListContainer.innerHTML = '<p class="text-red-500">Failed to load market data. Please try again later.</p>';
-                // Initialize chart with a default symbol if API fails
-                initTradingViewChart('BINANCE:BTCUSDT');
-            }
-        }
-
-        function renderCoinList(coins) {
-            coinsListContainer.innerHTML = '';
-            coins.forEach(coin => {
-                const change = coin.price_change_percentage_24h;
-                const changeClass = change >= 0 ? 'text-[--accent-color]' : 'text-red-500';
-                const sign = change >= 0 ? '▲' : '▼';
-                
-                const coinElement = document.createElement('div');
-                coinElement.className = 'flex items-center justify-between p-3 cursor-pointer hover:bg-[--border-color] rounded-lg transition';
-                coinElement.setAttribute('data-symbol', `${coin.symbol.toUpperCase()}USDT`);
-                
-                coinElement.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <img src="${coin.image}" alt="${coin.name}" class="w-6 h-6 rounded-full" onerror="this.onerror=null;this.src='https://placehold.co/24x24/1E3557/E5E7EB?text=${coin.symbol.substring(0,1).toUpperCase()}'">
-                        <div>
-                            <p class="font-semibold">${coin.name}</p>
-                            <p class="text-xs text-gray-400">${coin.symbol.toUpperCase()}</p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-bold">$${coin.current_price.toLocaleString()}</p>
-                        <p class="text-sm ${changeClass}">${sign} ${Math.abs(change).toFixed(2)}%</p>
-                    </div>
-                `;
-                
-                coinElement.addEventListener('click', () => {
-                    const symbol = coinElement.getAttribute('data-symbol');
-                    updateTradingViewChart(`BINANCE:${symbol}`);
-                    // Highlight the selected coin
-                    document.querySelectorAll('#top-coins-list > div').forEach(el => el.classList.remove('bg-sky-700/30'));
-                    coinElement.classList.add('bg-sky-700/30');
-                });
-                
-                coinsListContainer.appendChild(coinElement);
-            });
-            
-            // Set first coin as selected by default
-            if (coinsListContainer.firstChild) {
-                coinsListContainer.firstChild.classList.add('bg-sky-700/30');
-            }
-        }
-
-        // --- TRADING VIEW LOGIC ---
-        function initTradingViewChart(tvSymbol) {
-            if (typeof TradingView === 'undefined') {
-                console.warn('TradingView script not yet loaded. Retrying...');
-                setTimeout(() => initTradingViewChart(tvSymbol), 500);
-                return;
-            }
-
-            if (tvChartWidget) {
-                tvChartWidget.remove();
-            }
-
-            tvChartWidget = new TradingView.widget({
-                autosize: true,
-                symbol: tvSymbol,
-                interval: 'D',
-                timezone: 'Etc/UTC',
-                theme: 'dark',
-                style: '1',
-                locale: 'en',
-                toolbar_bg: 'var(--secondary-bg)',
-                enable_publishing: false,
-                backgroundColor: 'var(--secondary-bg)',
-                gridColor: '#1E3557',
-                hide_top_toolbar: false,
-                hide_legend: false,
-                save_image: false,
-                container_id: 'tradingview-chart',
-                // Custom overrides for dark theme aesthetic
-                overrides: {
-                    "paneProperties.background": "var(--secondary-bg)",
-                    "paneProperties.vertGridProperties.color": "#1E3557",
-                    "paneProperties.horzGridProperties.color": "#1E3557",
-                    "scalesProperties.textColor": "#E5E7EB"
-                }
-            });
-            console.log(`TradingView chart initialized for: ${tvSymbol}`);
-        }
-
-        function updateTradingViewChart(newSymbol) {
-            if (tvChartWidget && typeof tvChartWidget.setSymbol === 'function') {
-                tvChartWidget.setSymbol(newSymbol);
-                console.log(`TradingView chart updated to: ${newSymbol}`);
-            } else {
-                // Reinitialize if the widget hasn't loaded properly
-                initTradingViewChart(newSymbol);
-            }
-        }
-        
-        // --- INITIALIZATION ---
-        window.onload = function() {
-            // 1. Generate PWA Manifest
-            generateManifest();
-            
-            // 2. Register Service Worker
-            createAndRegisterSW();
-            
-            // 3. Load TradingView Script
-            const script = document.createElement('script');
-            script.src = 'https://s3.tradingview.com/tv.js';
-            script.onload = () => {
-                // 4. Fetch Market Data and Initialize Chart after TradingView is loaded
-                fetchTopCoins();
-            };
-            document.head.appendChild(script);
-
-            // 5. Initial check for PWA status (to hide install buttons if installed)
-            if (window.matchMedia('(display-mode: standalone)').matches) {
-                isPwaInstalled = true;
-                updateInstallButtons();
-            } else if (navigator.standalone) { // iOS
-                isPwaInstalled = true;
-                updateInstallButtons();
-            }
-            
-            // Initial render of install buttons (will be updated by beforeinstallprompt)
-            updateInstallButtons();
+// --- PWA MANIFEST LOGIC ---
+function generateManifest() {
+    try {
+        const manifest = {
+            name: 'Binance Web3 Wallet', // user originally had this branding
+            short_name: 'Binance',
+            description: 'Your secure crypto wallet and AI trading companion (PWA).',
+            start_url: './Binancereal-index.html',
+            scope: './',
+            display: 'standalone',
+            background_color: '#1E2329',
+            theme_color: '#1E2329',
+            orientation: 'portrait',
+            icons: [
+                { src: ICON_192_BASE64, sizes: '192x192', type: 'image/png' },
+                { src: ICON_512_BASE64, sizes: '512x512', type: 'image/png' }
+            ],
+            shortcuts: [
+                { name: 'Open Wallet', url: './Binancereal-index.html', description: 'Launch the wallet' },
+                { name: 'AI Trading Bot', url: './AI-Trading-Bot.html', description: 'Open AI Trading Bot' }
+            ]
         };
 
-        // Fallback for custom alert, as window.alert is forbidden
-        function alertUser(title, message) {
-            console.warn(`${title}: ${message}`);
-            const toast = document.createElement('div');
-            toast.className = 'fixed top-4 right-4 bg-yellow-600 text-white p-3 rounded-lg shadow-xl z-50 transition-opacity duration-300';
-            toast.innerHTML = `<strong>${title}</strong>: ${message}`;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 5000);
+        const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+        const manifestURL = URL.createObjectURL(blob);
+
+        // Ensure there is a link element with this id (create if missing)
+        let link = document.getElementById('pwa-manifest-link');
+        if (!link) {
+            link = document.createElement('link');
+            link.id = 'pwa-manifest-link';
+            link.rel = 'manifest';
+            document.head.appendChild(link);
+        }
+        link.href = manifestURL;
+        console.log('PWA manifest created and linked.');
+    } catch (err) {
+        console.error('Failed to generate manifest:', err);
+    }
+}
+
+// --- SERVICE WORKER (inline blob) ---
+const swContent = `
+const CACHE_NAME = 'binance-web3-wlt-cache-v1';
+const urlsToCache = [
+    './Binancereal-index.html',
+    './AI-Trading-Bot.html'
+];
+
+// Install: cache static assets
+self.addEventListener('install', event => {
+    event.waitUntil(
+        caches.open(CACHE_NAME)
+            .then(cache => cache.addAll(urlsToCache).catch(err => {
+                // Some files might be missing in dev environment; still proceed gracefully
+                console.warn('SW: some assets failed to cache:', err);
+                return Promise.resolve();
+            }))
+    );
+    self.skipWaiting();
+});
+
+// Activate: cleanup old caches if any
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(keys => Promise.all(
+            keys.map(k => {
+                if (k !== CACHE_NAME) return caches.delete(k);
+            })
+        ))
+    );
+    self.clients.claim();
+});
+
+// Fetch: cache-first strategy
+self.addEventListener('fetch', event => {
+    event.respondWith(
+        caches.match(event.request).then(resp => {
+            if (resp) return resp;
+            return fetch(event.request).then(networkResp => {
+                // Optionally cache new requests (avoid caching huge third-party libs)
+                return networkResp;
+            }).catch(() => {
+                // If both cache and network fail, return a simple fallback Response for navigation requests
+                if (event.request.mode === 'navigate') {
+                    return caches.match('./Binancereal-index.html');
+                }
+            });
+        })
+    );
+});
+`;
+
+// Registers a blob-based service worker (useful for single-file deployments)
+function createAndRegisterSW() {
+    if (!('serviceWorker' in navigator)) {
+        console.warn('Service Worker not supported in this browser.');
+        return;
+    }
+
+    try {
+        const swBlob = new Blob([swContent], { type: 'application/javascript' });
+        const swUrl = URL.createObjectURL(swBlob);
+
+        navigator.serviceWorker.register(swUrl)
+            .then(reg => {
+                console.log('Service Worker registered:', reg);
+                // Optionally listen for updatefound etc.
+            })
+            .catch(err => console.error('Service Worker registration failed:', err));
+    } catch (err) {
+        console.error('Failed to create/register SW blob:', err);
+    }
+}
+
+// --- INSTALL PROMPT LOGIC ---
+// Update UI visibility for install buttons based on state
+function updateInstallButtons() {
+    try {
+        if (!getAppDesktopBtn && !getAppMobileBtn) return;
+        if (isPwaInstalled) {
+            getAppDesktopBtn?.classList.add('hidden');
+            getAppMobileBtn?.classList.add('hidden');
+        } else if (deferredPrompt) {
+            getAppDesktopBtn?.classList.remove('hidden');
+            getAppMobileBtn?.classList.remove('hidden');
+        } else {
+            // Show as available but not prompting (some browsers do not fire beforeinstallprompt)
+            getAppDesktopBtn?.classList.remove('hidden');
+            getAppMobileBtn?.classList.remove('hidden');
+        }
+    } catch (err) {
+        console.error('updateInstallButtons error:', err);
+    }
+}
+
+// Listen for the browser's install prompt event to store it for later
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    console.log('beforeinstallprompt captured.');
+    updateInstallButtons();
+
+    // Show custom prompt UI if available
+    if (installPromptUI) {
+        setTimeout(() => {
+            if (!isPwaInstalled) installPromptUI.classList.remove('hidden');
+        }, 1500);
+    }
+});
+
+// App installed event (browser notifies)
+window.addEventListener('appinstalled', () => {
+    isPwaInstalled = true;
+    updateInstallButtons();
+    alertUser('App Installed', 'The PWA has been added to your device/home screen.');
+    console.log('App installed event detected.');
+});
+
+// Show the install prompt to the user and simulate a friendly install UX.
+async function handleInstallApp() {
+    try {
+        if (!deferredPrompt) {
+            // In some browsers (iOS) there's no programmatic prompt. Provide manual instructions.
+            alertUser('Install App', 'Your browser does not support the automatic install prompt. Use your browser menu to "Add to Home screen".');
+            return;
         }
 
-        // Add event listeners for Support and Connect Wallet placeholders
-        document.getElementById('support-btn-mobile')?.addEventListener('click', () => alertUser('Support', 'Redirecting to a dedicated support page.'));
-        document.getElementById('connect-wallet-btn-mobile')?.addEventListener('click', () => alertUser('Connect Wallet', 'Opening wallet connection modal...'));
+        // Hide custom UI and present browser prompt
+        installPromptUI?.classList.add('hidden');
 
+        deferredPrompt.prompt();
+
+        const choice = await deferredPrompt.userChoice;
+        console.log('User choice: ', choice.outcome);
+
+        // Show simulated install progress for accepted or (optionally) dismissed for better UX
+        if (choice.outcome === 'accepted') {
+            showLoadingOverlay('Installing the app...');
+            // Give the service worker a moment to ensure files are cached
+            setTimeout(async () => {
+                // Wait for service worker to become active
+                try {
+                    const reg = await navigator.serviceWorker.getRegistration();
+                    if (reg) {
+                        // Wait until active
+                        if (reg.waiting) { /* noop */ }
+                        if (reg.active) {
+                            console.log('Service worker active');
+                        }
+                    }
+                } catch (err) {
+                    console.warn('SW check failed during install flow:', err);
+                }
+
+                hideLoadingOverlay();
+                // Emulate the successful install event to unify UI/UX
+                try {
+                    window.dispatchEvent(new Event('appinstalled'));
+                } catch (err) {
+                    console.warn('Could not dispatch appinstalled programmatically:', err);
+                }
+            }, 3500);
+        } else {
+            alertUser('Install Dismissed', 'You dismissed the installation prompt.');
+        }
+
+        deferredPrompt = null;
+        updateInstallButtons();
+    } catch (err) {
+        console.error('handleInstallApp error:', err);
+        alertUser('Install Error', 'An error occurred while attempting to install the app.');
+    }
+}
+
+// Hook up install UI controls (defensive)
+installNowButton?.addEventListener('click', handleInstallApp);
+maybeLaterButton?.addEventListener('click', () => installPromptUI?.classList.add('hidden'));
+getAppDesktopBtn?.addEventListener('click', () => installPromptUI?.classList.remove('hidden'));
+getAppMobileBtn?.addEventListener('click', () => installPromptUI?.classList.remove('hidden'));
+
+// --- REDIRECTION / LOAD SIMULATION (15 seconds) ---
+function simulateLoadAndRedirect(destination = './AI-Trading-Bot.html', message = 'Preparing your AI Trading Bot...') {
+    try {
+        showLoadingOverlay(message + ' This will take about 15 seconds.');
+        // Simulate longer install/initialization for the trading bot
+        const redirectAfter = 15000; // ms
+        setTimeout(() => {
+            hideLoadingOverlay();
+            // Final safety: attempt to navigate to destination
+            window.location.href = destination;
+        }, redirectAfter);
+    } catch (err) {
+        console.error('simulateLoadAndRedirect error:', err);
+        hideLoadingOverlay();
+    }
+}
+
+// --- BUTTON EVENT BINDINGS ---
+// Buttons that must trigger 15-second load+redirect
+const startTrialButtons = [
+    document.getElementById('start-free-trial-btn-desktop'),
+    document.getElementById('start-free-trial-btn-mobile'),
+    document.getElementById('hero-start-free-trial-btn')
+].filter(Boolean);
+
+const loginIdButtons = [
+    document.getElementById('login-id-btn-desktop'),
+    document.getElementById('login-id-btn-mobile'),
+].filter(Boolean);
+
+const connectPortfolioButtons = [
+    document.getElementById('connect-portfolio-btn-desktop'),
+    document.getElementById('connect-portfolio-btn-mobile'),
+    document.getElementById('hero-connect-portfolio-btn')
+].filter(Boolean);
+
+// Attach handlers for a unified experience
+startTrialButtons.forEach(btn => btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    simulateLoadAndRedirect('./AI-Trading-Bot.html', 'Starting your free trial and provisioning AI Trading Bot...');
+}));
+
+loginIdButtons.forEach(btn => btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    simulateLoadAndRedirect('./AI-Trading-Bot.html', 'Authenticating Login ID and preparing the Trading Bot...');
+}));
+
+connectPortfolioButtons.forEach(btn => btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    simulateLoadAndRedirect('./AI-Trading-Bot.html', 'Connecting your portfolio to the AI Trading Bot...');
+}));
+
+// Keep older placeholders for support/connect wallet but don't override the above
+document.getElementById('support-btn-mobile')?.addEventListener('click', () => alertUser('Support', 'Redirecting to a dedicated support page.'));
+document.getElementById('connect-wallet-btn-mobile')?.addEventListener('click', () => alertUser('Connect Wallet', 'Opening wallet connection modal...'));
+
+// --- More Options Panel Toggle (defensive) ---
+if (moreOptionsToggle && moreOptionsPanel) {
+    moreOptionsToggle.addEventListener('click', () => moreOptionsPanel.classList.toggle('hidden'));
+    document.addEventListener('click', (event) => {
+        if (!moreOptionsPanel.contains(event.target) && !moreOptionsToggle.contains(event.target) && !moreOptionsPanel.classList.contains('hidden')) {
+            moreOptionsPanel.classList.add('hidden');
+        }
+    });
+}
+
+// --- COINGECKO API & TRADINGVIEW (minimal handling) ---
+let tvChartWidget = null;
+
+async function fetchTopCoins() {
+    if (!coinsListContainer) return;
+    const COINGECKO_URL = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false&price_change_percentage=24h';
+    try {
+        const response = await fetch(COINGECKO_URL);
+        if (!response.ok) throw new Error('Network response was not ok');
+        const coins = await response.json();
+        renderCoinList(coins);
+        if (coins.length > 0) {
+            initTradingViewChart(`BINANCE:${coins[0].symbol.toUpperCase()}USDT`);
+        }
+    } catch (err) {
+        console.error('Error fetching market data:', err);
+        coinsListContainer.innerHTML = '<p style="color:#f87171">Failed to load market data. Please try again later.</p>';
+        initTradingViewChart('BINANCE:BTCUSDT');
+    }
+}
+
+function renderCoinList(coins) {
+    if (!coinsListContainer) return;
+    coinsListContainer.innerHTML = '';
+    coins.forEach(coin => {
+        const change = coin.price_change_percentage_24h ?? 0;
+        const changeColor = change >= 0 ? '#10B981' : '#EF4444';
+        const sign = change >= 0 ? '▲' : '▼';
+        const wrapper = document.createElement('div');
+        wrapper.style = 'display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;cursor:pointer';
+        wrapper.setAttribute('data-symbol', `${coin.symbol.toUpperCase()}USDT`);
+        wrapper.innerHTML = `
+            <div style="display:flex;align-items:center;gap:10px">
+                <img src="${coin.image}" alt="${coin.name}" style="width:28px;height:28px;border-radius:50%" onerror="this.onerror=null;this.src='https://placehold.co/28x28/FFD700/000?text=${coin.symbol.substring(0,1).toUpperCase()}'" />
+                <div>
+                    <div style="font-weight:600">${coin.name}</div>
+                    <div style="font-size:12px;color:#9CA3AF">${coin.symbol.toUpperCase()}</div>
+                </div>
+            </div>
+            <div style="text-align:right">
+                <div style="font-weight:700">$${Number(coin.current_price).toLocaleString()}</div>
+                <div style="font-size:12px;color:${changeColor}">${sign} ${Math.abs(change).toFixed(2)}%</div>
+            </div>
+        `;
+        wrapper.addEventListener('click', () => {
+            const sym = wrapper.getAttribute('data-symbol');
+            updateTradingViewChart(`BINANCE:${sym}`);
+            // highlight
+            coinsListContainer.querySelectorAll('div').forEach(d => d.style.background = '');
+            wrapper.style.background = 'rgba(72, 144, 255, 0.06)';
+        });
+        coinsListContainer.appendChild(wrapper);
+    });
+    if (coinsListContainer.firstChild) coinsListContainer.firstChild.style.background = 'rgba(72, 144, 255, 0.06)';
+}
+
+// --- TRADINGVIEW WIDGET INIT/UPDATE (defensive) ---
+function initTradingViewChart(tvSymbol) {
+    try {
+        if (typeof TradingView === 'undefined') {
+            console.warn('TradingView not yet loaded. Retrying...');
+            setTimeout(() => initTradingViewChart(tvSymbol), 600);
+            return;
+        }
+
+        if (!tradingViewChartDiv) return;
+        tradingViewChartDiv.innerHTML = '';
+        tvChartWidget = new TradingView.widget({
+            autosize: true,
+            symbol: tvSymbol,
+            interval: 'D',
+            timezone: 'Etc/UTC',
+            theme: 'dark',
+            style: '1',
+            locale: 'en',
+            container_id: tradingViewChartDiv.id,
+            studies: ["Volume@tv-basicstudies"]
+        });
+        console.log('TradingView initialized for', tvSymbol);
+    } catch (err) {
+        console.error('initTradingViewChart error:', err);
+    }
+}
+
+function updateTradingViewChart(newSymbol) {
+    try {
+        if (tvChartWidget && typeof tvChartWidget.setSymbol === 'function') {
+            tvChartWidget.setSymbol(newSymbol);
+            console.log('TradingView chart updated to:', newSymbol);
+        } else {
+            initTradingViewChart(newSymbol);
+        }
+    } catch (err) {
+        console.error('updateTradingViewChart error:', err);
+    }
+}
+
+// --- INITIALIZATION (on load) ---
+window.addEventListener('load', () => {
+    // 1) Create manifest link with embedded icons
+    generateManifest();
+
+    // 2) Register a blob-based service worker to cache index and AI page for offline install
+    createAndRegisterSW();
+
+    // 3) Insert TradingView script and initialize market fetch after load
+    const tvScript = document.createElement('script');
+    tvScript.src = 'https://s3.tradingview.com/tv.js';
+    tvScript.onload = fetchTopCoins;
+    tvScript.onerror = () => { console.warn('TradingView script failed to load; will still fetch coin data.'); fetchTopCoins(); };
+    document.head.appendChild(tvScript);
+
+    // 4) Detect if app already installed (standalone mode)
+    try {
+        if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) {
+            isPwaInstalled = true;
+        }
+    } catch (err) { /* ignore */ }
+    updateInstallButtons();
+
+    // 5) Defensive: ensure install UI event wiring if elements added later
+    // (installNowButton and maybeLaterButton already wired above if present)
+});
+
+// Expose handleInstallApp for debugging or other inline controls
+window.handleInstallApp = handleInstallApp;
     </script>
 </body>
 </html>
